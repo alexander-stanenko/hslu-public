@@ -1,0 +1,19 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policyholder:         Nadia Rossi
+Address:              Weissensteinstrasse 22, 3007 Bern
+E-mail:               nadia.rossi@mail.example
+Date of incident:     25.10.2026 (night)
+Place of incident:    Weissensteinstrasse 22, 3007 Bern
+Type of damage:       Burglary / theft of vehicle
+
+Damaged items (one line per policy):
+  1. Household contents, policy P-10066: laptop, necklace, watch stolen. CHF 3'800.00 (receipts, valuation)
+  2. Car Audi Q3 (2022), BE 305 118, policy P-10067: stolen from the carport with the key taken in the burglary.
+     CHF 24'000.00 (Eurotax valuation)
+Police report: Kantonspolizei Bern, KAPO-BE-2026-118842
+
+Bank account (IBAN):  CH** **** **** **** **19 2
+
+I confirm that the information above is complete and correct.
+Date / signature:     27.10.2026 / Nadia Rossi (signed)

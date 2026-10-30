@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-008",
+  "received_at": "2026-10-14T12:39:00",
+  "channel": "email",
+  "sender": "luca.bernasconi@mail.example",
+  "attachments": [
+    "scan_001.txt",
+    "Vetri_VA-2207.txt"
+  ]
+}

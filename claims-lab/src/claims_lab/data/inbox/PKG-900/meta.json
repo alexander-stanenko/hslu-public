@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-900",
+  "received_at": "2026-10-30T20:32:00",
+  "channel": "web_form",
+  "sender": "kevin.brandt@mail.example",
+  "attachments": [
+    "claim_form_signed.txt",
+    "AutoGlas_AZ-66140.txt"
+  ]
+}

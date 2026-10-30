@@ -1,0 +1,19 @@
+INVOICE / RECHNUNG
+Garage Huber AG | CHE-865.525.279 MWST
+
+Customer:
+Ramona Kaufmann
+Schachenstrasse 15
+6010 Kriens
+Vehicle: LU 405 662
+
+Number: GH-3318    Issued: 20 October 2026
+
+- Windscreen, OEM quality: CHF 659.57
+- Labour: removal and installation: CHF 244.68
+- ADAS camera calibration: CHF 106.38
+- Adhesive kit and disposal: CHF 53.20
+
+Net amount CHF 1'063.83
++ 8.1% VAT CHF 86.17
+Amount due: CHF 1'150.00

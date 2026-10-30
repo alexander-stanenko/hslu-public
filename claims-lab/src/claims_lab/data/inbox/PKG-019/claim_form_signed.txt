@@ -1,0 +1,23 @@
+Claim report — Lakeside Insurance
+
+[1] POLICYHOLDER
+    Name: Andreas Gasser
+    Policy: P-10018
+    Contact: andreas.gasser@mail.example
+
+[2] WHAT HAPPENED?
+    When: 12 October 2026
+    Where: Emmenbrücke
+    [x] Glass breakage
+    Details: Windscreen cracked by a stone.
+
+[3] INSURED OBJECT
+    Opel Corsa (2016) / plate LU 774 310
+
+[4] COSTS
+    CHF 1'120.00
+
+[5] PAYMENT
+    IBAN CH** **** **** **** **57 7
+
+Signed electronically, 2026-10-14

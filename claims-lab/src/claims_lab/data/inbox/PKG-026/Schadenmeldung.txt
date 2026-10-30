@@ -1,0 +1,23 @@
+Claim report — Lakeside Insurance
+
+[1] POLICYHOLDER
+    Name: Monika Vogel
+    Policy: P-10027
+    Contact: monika.vogel@mail.example
+
+[2] WHAT HAPPENED?
+    When: 10 October 2026
+    Where: Aarau
+    [x] Glass breakage
+    Details: Windscreen replaced after crack.
+
+[3] INSURED OBJECT
+    Peugeot 308 (2019) / plate AG 330 145
+
+[4] COSTS
+    CHF 3'900.00
+
+[5] PAYMENT
+    IBAN CH** **** **** **** **81 6
+
+Signed electronically, 2026-10-15

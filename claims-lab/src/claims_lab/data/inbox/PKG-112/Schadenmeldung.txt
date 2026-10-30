@@ -1,0 +1,23 @@
+Claim report — Lakeside Insurance
+
+[1] POLICYHOLDER
+    Name: Roger Kunz
+    Policy: P-10036
+    Contact: roger.kunz@mail.example
+
+[2] WHAT HAPPENED?
+    When: 27 October 2026
+    Where: Zug
+    [x] Collision (own fault)
+    Details: Reversed into a bollard; rear bumper damaged.
+
+[3] INSURED OBJECT
+    Skoda Fabia (2019) / plate ZG 55 310
+
+[4] COSTS
+    CHF 1'680.00
+
+[5] PAYMENT
+    IBAN CH** **** **** **** **32 2
+
+Signed electronically, 2026-10-29

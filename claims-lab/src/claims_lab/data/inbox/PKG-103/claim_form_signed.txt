@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10037
+Policyholder:         Sabrina Iten
+Address:              Obernauerstrasse 30, 6010 Kriens
+E-mail:               sabrina.iten@mail.example
+Insured object:       Mercedes GLC (2024) / plate LU 908 553
+
+Date of incident:     14.09.2026
+Place of incident:    Kriens
+Type of damage:       Hail
+Description:          Severe hail damage on all body panels and panoramic roof.
+Estimated amount:     CHF 14'200.00
+Bank account (IBAN):  CH** **** **** **** **26 7
+
+I confirm that the information above is complete and correct.
+Date / signature:     25.09.2026 / Sabrina Iten (signed)

@@ -1,0 +1,12 @@
+*** AutoGlas Zentral GmbH ***
+INVOICE / RECHNUNG AZ-66140 — 2026-10-29
+
+Bill to: Kevin Brandt, Langstrasse 120, 8004 Zürich
+Vehicle: ZH 404 777
+
+  * Windscreen, OEM quality ... 630.90
+  * Labour: removal and installation ... 234.04
+  * ADAS camera calibration ... 101.76
+  * Adhesive kit and disposal ... 50.88
+
+Total excl. VAT 1'017.58 | VAT 82.42 | Total incl. VAT CHF 1'100.00

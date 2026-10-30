@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-106",
+  "received_at": "2026-11-03T17:42:00",
+  "channel": "email",
+  "sender": "katrin.buehler@mail.example",
+  "attachments": [
+    "claim_form_signed.txt",
+    "scan_002.txt"
+  ]
+}

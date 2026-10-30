@@ -1,0 +1,14 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policyholder:         Sandra Kälin
+Address:              Baarerstrasse 57, 6300 Zug
+E-mail:               sandra.kaelin@mail.example
+Policy number:        P-10071
+Date of incident:     24.10.2026, between 07:20 and 18:40
+Place of incident:    Bahnhof Zug, bike stand west side
+Type of damage:       Theft outside the home
+Description:          E-bike stolen from the locked bike stand, cable lock cut.
+Item:                 E-bike Flyer Upstreet 5, 2025, frame no. FLY-U5-77310
+Amount claimed:       CHF 2'450.00 (replacement, see quote VH-8812)
+Police report:        not yet filed
+Signature:            S. Kälin, 25.10.2026

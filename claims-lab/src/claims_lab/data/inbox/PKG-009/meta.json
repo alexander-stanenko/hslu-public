@@ -1,0 +1,11 @@
+{
+  "package_id": "PKG-009",
+  "received_at": "2026-10-23T15:46:00",
+  "channel": "email",
+  "sender": "patrick.moser@mail.example",
+  "attachments": [
+    "police_confirmation.txt",
+    "scan_002.txt",
+    "IMG_8935.txt"
+  ]
+}

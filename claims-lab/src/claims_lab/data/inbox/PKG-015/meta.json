@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-015",
+  "received_at": "2026-10-21T15:50:00",
+  "channel": "email",
+  "sender": "ramona.kaufmann@mail.example",
+  "attachments": [
+    "Schadenmeldung.txt",
+    "scan_002.txt"
+  ]
+}

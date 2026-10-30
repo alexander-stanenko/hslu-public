@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10009
+Policyholder:         Jasmin Gerber
+Address:              Baarerstrasse 101, 6300 Zug
+E-mail:               jasmin.gerber@mail.example
+Insured object:       BMW 320d (2023) / plate ZG 18 442
+
+Date of incident:     29.10.2026
+Place of incident:    A4 near Baar
+Type of damage:       Glass breakage
+Description:          Crack in windscreen after stone impact on the A4.
+Estimated amount:     CHF 1'290.00
+Bank account (IBAN):  CH** **** **** **** **18 5
+
+I confirm that the information above is complete and correct.
+Date / signature:     31.10.2026 / Jasmin Gerber (signed)

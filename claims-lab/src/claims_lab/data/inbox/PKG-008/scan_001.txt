@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10024
+Policyholder:         Luca Bernasconi
+Address:              Via Pretorio 9, 6900 Lugano
+E-mail:               luca.bernasconi@mail.example
+Insured object:       Alfa Romeo Giulia (2021) / plate TI 88 451
+
+Date of incident:     12.10.2026
+Place of incident:    A2 near Bellinzona
+Type of damage:       Glass breakage
+Description:          Windscreen cracked by a stone on the A2 near Bellinzona.
+Estimated amount:     CHF 1'190.00
+Bank account (IBAN):  CH** **** **** **** **90 2
+
+I confirm that the information above is complete and correct.
+Date / signature:     14.10.2026 / Luca Bernasconi (signed)

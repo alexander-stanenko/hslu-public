@@ -1,0 +1,12 @@
+{
+  "package_id": "PKG-017",
+  "received_at": "2026-10-19T22:52:00",
+  "channel": "email",
+  "sender": "laura.fischer@mail.example",
+  "attachments": [
+    "scan_001.txt",
+    "Polizeirapport.txt",
+    "scan_003.txt",
+    "Quittung_2.txt"
+  ]
+}

@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10041
+Policyholder:         Kevin Brandt
+Address:              Langstrasse 120, 8004 Zürich
+E-mail:               kevin.brandt@mail.example
+Insured object:       Golf GTI (2022) / plate ZH 404 777
+
+Date of incident:     28.10.2026
+Place of incident:    Zürich
+Type of damage:       Glass breakage
+Description:          Windscreen cracked.
+Estimated amount:     CHF 1'100.00
+Bank account (IBAN):  CH** **** **** **** **99 2
+
+I confirm that the information above is complete and correct.
+Date / signature:     30.10.2026 / Kevin Brandt (signed)

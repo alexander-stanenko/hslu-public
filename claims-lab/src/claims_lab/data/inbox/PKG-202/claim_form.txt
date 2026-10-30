@@ -1,0 +1,21 @@
+Claim report — Lakeside Insurance
+
+[1] POLICYHOLDER
+    Name: Daniel Gerber
+    Policies: P-10064 (building), P-10065 (household contents)
+    Contact: daniel.gerber@mail.example
+
+[2] WHAT HAPPENED?
+    When: Thursday, 23 October 2026, about 18:30
+    Where: Seeburgstrasse 31, 6006 Luzern, kitchen and living room
+    [x] Water damage
+    Details: Pipe burst in the kitchen wall behind the dishwasher. Water on the floor of kitchen and living room.
+
+[3] DAMAGE
+    Building: pipe repair and drying of the floor, CHF 3'600.00 (invoice Sanitär Wyss AG)
+    Contents: sofa and rug, CHF 1'850.00 (invoice Möbel Hubacher AG)
+
+[4] PAYMENT
+    IBAN CH** **** **** **** **52 8
+
+Signed electronically, 26.10.2026

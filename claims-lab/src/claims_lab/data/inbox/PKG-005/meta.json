@@ -1,0 +1,9 @@
+{
+  "package_id": "PKG-005",
+  "received_at": "2026-10-28T18:29:00",
+  "channel": "email",
+  "sender": "martina.graf@mail.example",
+  "attachments": [
+    "Rechnung_ES-1408.txt"
+  ]
+}

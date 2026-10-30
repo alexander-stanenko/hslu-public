@@ -1,0 +1,10 @@
+From: Reto Schmid <reto.schmid@mail.example>
+To: claims@lakeside-insurance.example
+Date: 2026-10-21 20:56
+Subject: New claim
+
+Hello,
+
+the storm on 18 October tore about 30 tiles off our roof. The roofer secured the roof the same night and replaced the tiles on 20 October. Invoice attached. Building policy P-10006.
+
+Regards, Reto Schmid

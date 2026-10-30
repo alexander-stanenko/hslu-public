@@ -1,0 +1,23 @@
+Claim report — Lakeside Insurance
+
+[1] POLICYHOLDER
+    Name: Nils Lehmann
+    Policy: P-10020
+    Contact: nils.lehmann@mail.example
+
+[2] WHAT HAPPENED?
+    When: 03 October 2026
+    Where: Bern
+    [x] Hail
+    Details: Hail dents on roof and boot lid after the hailstorm in Bern.
+
+[3] INSURED OBJECT
+    Renault Clio (2017) / plate BE 512 980
+
+[4] COSTS
+    CHF 2'640.00
+
+[5] PAYMENT
+    IBAN CH** **** **** **** **96 9
+
+Signed electronically, 2026-10-07

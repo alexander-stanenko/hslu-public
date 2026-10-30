@@ -1,0 +1,23 @@
+Claim report — Lakeside Insurance
+
+[1] POLICYHOLDER
+    Name: Fabienne Roth
+    Policy: P-10015
+    Contact: fabienne.roth@mail.example
+
+[2] WHAT HAPPENED?
+    When: 22 October 2026
+    Where: Bern
+    [x] Burglary
+    Details: Burglary through the cellar window; jewellery and a tablet stolen.
+
+[3] INSURED OBJECT
+    Bümplizstrasse 120, 3027 Bern
+
+[4] COSTS
+    CHF 3'200.00
+
+[5] PAYMENT
+    IBAN CH** **** **** **** **93 2
+
+Signed electronically, 2026-10-26

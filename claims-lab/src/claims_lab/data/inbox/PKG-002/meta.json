@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-002",
+  "received_at": "2026-10-20T21:55:00",
+  "channel": "email",
+  "sender": "beat.zimmermann@mail.example",
+  "attachments": [
+    "IMG_1588.txt",
+    "IMG_4846.txt"
+  ]
+}

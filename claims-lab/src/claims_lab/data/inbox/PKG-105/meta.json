@@ -1,0 +1,11 @@
+{
+  "package_id": "PKG-105",
+  "received_at": "2026-10-20T09:43:00",
+  "channel": "web_form",
+  "sender": "daniel.huber@mail.example",
+  "attachments": [
+    "scan_001.txt",
+    "scan_002.txt",
+    "IMG_8450.txt"
+  ]
+}

@@ -1,0 +1,12 @@
+*** Garage Sonnenberg AG ***
+INVOICE / RECHNUNG SB-5601 — 2026-11-02
+
+Bill to: Katrin Bühler, Teufener Strasse 24, 9000 St. Gallen
+Vehicle: SG 77 905
+
+  * Windscreen, OEM quality ... 619.42
+  * Labour: removal and installation ... 229.79
+  * ADAS camera calibration ... 99.91
+  * Adhesive kit and disposal ... 49.95
+
+Total excl. VAT 999.07 | VAT 80.93 | Total incl. VAT CHF 1'080.00

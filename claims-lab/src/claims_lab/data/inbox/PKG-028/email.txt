@@ -1,0 +1,11 @@
+From: Jasmin Gerber <jasmin.gerber@mail.example>
+To: claims@lakeside-insurance.example
+Date: 2026-10-31 18:12
+Subject: Claim - documents attached
+
+Dear Sir or Madam,
+
+please find attached the claim form and the invoice for the replacement of my windscreen (stone impact on the A4, 29 October).
+
+Kind regards
+Jasmin Gerber

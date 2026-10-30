@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10023
+Policyholder:         Céline Favre
+Address:              Effingerstrasse 16, 3008 Bern
+E-mail:               céline.favre@mail.example
+Insured object:       VW Tiguan (2022) / plate BE 209 655
+
+Date of incident:     16.10.2026
+Place of incident:    Bern-Bethlehem petrol station
+Type of damage:       Theft of vehicle
+Description:          Car stolen at a petrol station.
+Estimated amount:     CHF 18'500.00
+Bank account (IBAN):  CH** **** **** **** **87 8
+
+I confirm that the information above is complete and correct.
+Date / signature:     17.10.2026 / Céline Favre (signed)

@@ -1,0 +1,11 @@
+{
+  "package_id": "PKG-006",
+  "received_at": "2026-10-07T14:42:00",
+  "channel": "web_form",
+  "sender": "nils.lehmann@mail.example",
+  "attachments": [
+    "claim_form_signed.txt",
+    "Offerte_KV-3390.txt",
+    "IMG_5901.txt"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "package_id": "PKG-103",
+  "received_at": "2026-09-25T16:01:00",
+  "channel": "web_form",
+  "sender": "sabrina.iten@mail.example",
+  "attachments": [
+    "claim_form_signed.txt",
+    "Carrosserie_KV-1201.txt",
+    "IMG_8344.txt"
+  ]
+}

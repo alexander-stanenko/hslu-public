@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10001
+Policyholder:         Anna Brunner
+Address:              Hirschmattstrasse 12, 6003 Luzern
+E-mail:               anna.brunner@mail.example
+Insured object:       VW Golf (2021) / plate LU 248 113
+
+Date of incident:     20.10.2026
+Place of incident:    A2 near Sursee
+Type of damage:       Glass breakage
+Description:          Stone chip on the A2 near Sursee; the crack spread across the windscreen overnight.
+Estimated amount:     CHF 1'150.00
+Bank account (IBAN):  CH** **** **** **** **96 5
+
+I confirm that the information above is complete and correct.
+Date / signature:     22.10.2026 / Anna Brunner (signed)

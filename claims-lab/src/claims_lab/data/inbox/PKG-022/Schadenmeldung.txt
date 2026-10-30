@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10007
+Policyholder:         Claudia Frei
+Address:              Menzbergstrasse 3, 6130 Willisau
+E-mail:               claudia.frei@mail.example
+Insured object:       Subaru Forester (2022) / plate LU 330 871
+
+Date of incident:     05.10.2026
+Place of incident:    Willisau-Menznau road
+Type of damage:       Collision with animal
+Description:          Collided with a deer on the road between Willisau and Menznau at dusk; front bumper, grille and headlight damaged.
+Estimated amount:     CHF 3'880.00
+Bank account (IBAN):  CH** **** **** **** **24 8
+
+I confirm that the information above is complete and correct.
+Date / signature:     13.10.2026 / Claudia Frei (signed)

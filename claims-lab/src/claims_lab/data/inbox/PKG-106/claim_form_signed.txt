@@ -1,0 +1,17 @@
+LAKESIDE INSURANCE AG — CLAIM NOTIFICATION FORM
+================================================
+Policy number:        P-10031
+Policyholder:         Katrin Bühler
+Address:              Teufener Strasse 24, 9000 St. Gallen
+E-mail:               katrin.buehler@mail.example
+Insured object:       Kia Ceed (2022) / plate SG 77 905
+
+Date of incident:     01.11.2026
+Place of incident:    St. Gallen
+Type of damage:       Glass breakage
+Description:          Windscreen cracked by stone impact.
+Estimated amount:     CHF 1'080.00
+Bank account (IBAN):  CH** **** **** **** **63 2
+
+I confirm that the information above is complete and correct.
+Date / signature:     03.11.2026 / Katrin Bühler (signed)

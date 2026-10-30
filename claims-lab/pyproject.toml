@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claims-lab"
+version = "0.1.0"
+description = "Helper package and synthetic data for the HSLU module 'AI Agents and Controlled Workflows' (fictional Lakeside Insurance AG)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "langchain==1.4.7",
+    "langchain-core==1.7.0",
+    "langgraph==1.2.17",
+    "langchain-anthropic==1.7.6",
+    "langchain-openai==1.7.2",
+    "fastmcp==3.4.11",
+    "mcp==1.30.0",
+    "langchain-mcp-adapters==0.3.2",
+    "pandas",
+    "jinja2",  # coloured scoreboard tables (pandas styling)
+    "numpy",
+    "matplotlib",
+    "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "nbclient", "nbformat", "ipykernel"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+claims_lab = ["*.mplstyle", "*.md", "data/*", "data/*/*", "data/*/*/*", "replay/*", "figures/*.png"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

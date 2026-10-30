@@ -1,0 +1,11 @@
+{
+  "package_id": "PKG-016",
+  "received_at": "2026-09-29T20:23:00",
+  "channel": "email",
+  "sender": "adrian.arnold@mail.example",
+  "attachments": [
+    "scan_001.txt",
+    "Offerte_KV-5512.txt",
+    "IMG_4830.txt"
+  ]
+}

@@ -1,0 +1,25 @@
+Garage Huber AG
+CHE-881.874.279 MWST
+
+INVOICE / RECHNUNG
+
+Anna Brunner
+Hirschmattstrasse 12
+6003 Luzern
+
+Invoice no. GH-4471
+Date: 22.10.2026
+Vehicle: LU 248 113
+
+Pos  Description                                   CHF
+   1  Windscreen, OEM quality                           659.57
+   2  Labour: removal and installation                  244.68
+   3  ADAS camera calibration                           106.38
+   4  Adhesive kit and disposal                          53.20
+
+      Subtotal                                       1'063.83
+      VAT 8.1%                                          86.17
+      TOTAL CHF                                      1'150.00
+
+
+Payment within 30 days. Thank you for your trust.

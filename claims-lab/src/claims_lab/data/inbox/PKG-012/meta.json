@@ -1,0 +1,11 @@
+{
+  "package_id": "PKG-012",
+  "received_at": "2026-10-22T13:43:00",
+  "channel": "web_form",
+  "sender": "anna.brunner@mail.example",
+  "attachments": [
+    "scan_001.txt",
+    "Garage_GH-4471.txt",
+    "IMG_8708.txt"
+  ]
+}

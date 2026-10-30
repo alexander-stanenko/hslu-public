@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-020",
+  "received_at": "2026-10-16T18:52:00",
+  "channel": "email",
+  "sender": "marco.bianchi@mail.example",
+  "attachments": [
+    "Rechnung_TS-5520.txt",
+    "IMG_6296.txt"
+  ]
+}

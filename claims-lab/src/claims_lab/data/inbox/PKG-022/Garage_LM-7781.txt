@@ -1,0 +1,19 @@
+INVOICE / RECHNUNG
+Garage Lindenmatt AG | CHE-621.822.379 MWST
+
+Customer:
+Claudia Frei
+Menzbergstrasse 3
+6130 Willisau
+Vehicle: LU 330 871
+
+Number: LM-7781    Issued: 12 October 2026
+
+- Front bumper, new part: CHF 1'256.24
+- Headlight / fog light unit: CHF 1'076.78
+- Paint work: CHF 717.85
+- Labour: CHF 538.40
+
+Net amount CHF 3'589.27
++ 8.1% VAT CHF 290.73
+Amount due: CHF 3'880.00

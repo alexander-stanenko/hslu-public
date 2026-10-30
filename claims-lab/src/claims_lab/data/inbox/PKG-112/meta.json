@@ -1,0 +1,10 @@
+{
+  "package_id": "PKG-112",
+  "received_at": "2026-10-29T06:17:00",
+  "channel": "email",
+  "sender": "roger.kunz@mail.example",
+  "attachments": [
+    "Schadenmeldung.txt",
+    "Garage_ZL-4418.txt"
+  ]
+}

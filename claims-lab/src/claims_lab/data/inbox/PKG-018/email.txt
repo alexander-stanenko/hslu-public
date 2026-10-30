@@ -1,0 +1,10 @@
+From: Simon Baumann <simon.baumann@mail.example>
+To: claims@lakeside-insurance.example
+Date: 2026-10-27 21:30
+Subject: Damage report
+
+Hello,
+
+a water pipe burst in the basement of our house on 24 October. The plumber replaced the pipe section; the invoice is attached. Policy P-10008.
+
+Simon Baumann

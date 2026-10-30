@@ -1,0 +1,10 @@
+From: Nils Lehmann <nils.lehmann@mail.example>
+To: claims@lakeside-insurance.example
+Date: 2026-10-07 14:42
+Subject: Claim
+
+Hello,
+
+hail damage from the storm in Bern on 3 October, estimate attached. Policy P-10020.
+
+Nils Lehmann
