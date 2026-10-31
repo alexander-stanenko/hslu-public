@@ -242,7 +242,7 @@ EVIDENCE = {
         "Several policies (one event)": "Over two runs on 3 such claims (14 policy decisions), one agent and the "
                                         "product-line team each decided 9 right, with 4 and 5 unsafe approvals; the "
                                         "pipeline per part decided all 7 of its run right, by rule."},
-    # Block 6: the answer to the COO, one line per kind of claim (slide 96).
+    # Block 6: the answer to the COO, one line per kind of claim (slide 97).
     6: {"Routine and complete": "Answer: the pipeline. Code checks the rules and computes the payout; no agent needed.",
         "Incomplete": "Answer: a rule asks the customer (request_info), and the letter loop writes to them; with a person "
                       "on the line, the server can ask (elicitation).",
@@ -405,8 +405,8 @@ FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "agent_loop": "The agent loop (slide 21)",
            "mcp_architecture": "Host, client and server (slide 51)",
            "hybrid_pipeline": "The hybrid pipeline (slide 69)",
-           "claims_team": "Lakeside's claims team (slide 84)",
-           "storm_claim": "The storm claim: one storm, three policies (slide 88)"}
+           "claims_team": "Lakeside's claims team (slide 86)",
+           "storm_claim": "The storm claim: one storm, three policies (slide 81)"}
 
 
 def figure(name: str, width: int = 900) -> None:
