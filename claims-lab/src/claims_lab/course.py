@@ -27,7 +27,7 @@ BLOCKS = {
     1: {"question": "Which kinds of system can decide a claim, and how does an agent work?",
         "open": "From notebook 00: PKG-015 passes four of the five questions, but its invoice was already paid. "
                 "Which kind of system notices that?",
-        "tell": ["A chatbot cannot check anything, so it pays a claim whenever the problem is in another system.",
+        "tell": ["A chatbot cannot check anything: when the problem is in another system, its decision is a guess.",
                  "A workflow is cheap and predictable, but it only runs the checks someone wrote down.",
                  "An agent chooses its own checks; it found the reused invoice, but without Lakeside's rules it usually "
                  "declined instead of referring, and we judged it on three claims by eye."]},
@@ -217,8 +217,9 @@ def kinds(block: int = 6) -> list[tuple[str, str]]:
 EVIDENCE = {
     1: {"Routine and complete": "The chatbot missed the deductible on PKG-012; it cannot look up the policy.",
         "Not covered": "The chatbot paid PKG-019; it cannot see the policy.",
-        "Suspicious": "The chatbot paid PKG-015 and the naive workflow missed it; the agent found the reused invoice "
-                      "but declined instead of referring."},
+        "Suspicious": "The chatbot cannot see the claim history: it paid PKG-015 on 27 Oct and referred it for an "
+                      "invented reason in the recorded run. The naive workflow missed it; the agent found the reused "
+                      "invoice but declined instead of referring."},
     2: {"Ambiguous": "The Block 2 agent found the building exclusion on PKG-025.",
         "Not covered": "The agent with tools still paid some claims it should not have (4 on 28)."},
     3: {"Incomplete": "Over MCP a server can ask a person for a missing fact (elicitation, PKG-021).",
@@ -241,7 +242,7 @@ EVIDENCE = {
         "Several policies (one event)": "Over two runs on 3 such claims (14 policy decisions), one agent and the "
                                         "product-line team each decided 9 right, with 4 and 5 unsafe approvals; the "
                                         "pipeline per part decided all 7 of its run right, by rule."},
-    # Block 6: the answer to the COO, one line per kind of claim (slide 95).
+    # Block 6: the answer to the COO, one line per kind of claim (slide 96).
     6: {"Routine and complete": "Answer: the pipeline. Code checks the rules and computes the payout; no agent needed.",
         "Incomplete": "Answer: a rule asks the customer (request_info), and the letter loop writes to them; with a person "
                       "on the line, the server can ask (elicitation).",
@@ -351,8 +352,7 @@ def _picks_file():
 
 def save_picks(picks: dict) -> None:
     """Save your Exercise D picks: {kind of claim: system} or {kind of claim: (system, reason)}. Later picks for the
-    same kind replace earlier ones.
-    Colab starts each notebook in a fresh runtime, so the function also prints a line to paste into the next notebook."""
+    same kind replace earlier ones."""
     known = {k for k, _ in kinds()}
     unknown = set(picks) - known
     if unknown:
@@ -366,24 +366,12 @@ def save_picks(picks: dict) -> None:
     saved = json.loads(path.read_text()) if path.exists() else {}
     saved.update({k: list(v) if isinstance(v, (tuple, list)) else [v, ""] for k, v in picks.items()})
     path.write_text(json.dumps(saved, ensure_ascii=False, indent=1))
-    print(f"saved {len(saved)} picks.")
-    _print_paste_line(saved)
-
-
-def _print_paste_line(saved: dict) -> None:
-    print("Copy this line into a note: notebook 06 needs it (Colab starts each notebook fresh), and pasted above "
-          "cl.show_picks in any notebook it shows your picks there:")
-    print(f"cl.save_picks({ {k: tuple(v) for k, v in saved.items()} !r})")
+    print(f"Saved your picks for {len(saved)} kind{'s' if len(saved) != 1 else ''} of claim.")
 
 
 def show_picks(block: int) -> None:
-    """Show your picks next to what the measurements of Blocks 1 to `block` say about each kind of claim, and the line
-    that carries them into the next notebook."""
+    """Show your picks next to what the measurements of Blocks 1 to `block` say about each kind of claim."""
     picks_table(block, show=True)
-    path = _picks_file()
-    saved = json.loads(path.read_text()) if path.exists() else {}
-    if saved:
-        _print_paste_line(saved)
 
 
 def picks_table(block: int, show: bool = False):
@@ -403,9 +391,7 @@ def picks_table(block: int, show: bool = False):
     if not saved and block == 1:
         print("No picks saved yet: fill in the picks cell above and run it, then run this cell again.")
     elif not saved:
-        print("Your picks are not in this runtime (Colab starts each notebook fresh); the table shows what the measurements "
-              "say so far. To see your picks next to them, paste the cl.save_picks(...) line from notebook 01 above "
-              "cl.show_picks and run the cell again.")
+        print("The table shows what the measurements say so far. Your own picks are in notebook 01.")
     try:
         from IPython.display import display
         display(df.style.set_properties(**{"white-space": "pre-wrap", "text-align": "left"}))
@@ -415,12 +401,12 @@ def picks_table(block: int, show: bool = False):
 
 
 FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
-           "three_systems": "Kinds of LLM systems (slide 13)",
+           "three_systems": "Kinds of LLM systems (slide 14)",
            "agent_loop": "The agent loop (slide 21)",
            "mcp_architecture": "Host, client and server (slide 51)",
-           "hybrid_pipeline": "The hybrid pipeline (slide 68)",
-           "claims_team": "Lakeside's claims team (slide 83)",
-           "storm_claim": "The storm claim: one storm, three policies (slide 87)"}
+           "hybrid_pipeline": "The hybrid pipeline (slide 69)",
+           "claims_team": "Lakeside's claims team (slide 84)",
+           "storm_claim": "The storm claim: one storm, three policies (slide 88)"}
 
 
 def figure(name: str, width: int = 900) -> None:

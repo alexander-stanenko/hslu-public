@@ -38,7 +38,7 @@ def test_picks_are_saved_merged_and_shown_with_evidence(capsys):
     with pytest.raises(ValueError):
         cl.save_picks({"Weird": ("agent", "x")})
     cl.save_picks({"Suspicious": ("agent", "it can look things up")})
-    assert "cl.save_picks(" in capsys.readouterr().out
+    assert "Saved your picks for 1 kind of claim." in capsys.readouterr().out
     cl.save_picks({"Not covered": ("workflow", "a fixed rule")})
     df = course.picks_table(4).set_index("kind of claim")
     assert df.loc["Suspicious", "your pick"] == "agent" and df.loc["Not covered", "your pick"] == "workflow"
@@ -51,7 +51,7 @@ def test_show_picks_without_saved_picks_explains_why(capsys):
     cl.show_picks(1)
     assert "fill in the picks cell above" in capsys.readouterr().out
     cl.show_picks(3)
-    assert "Your picks are not in this runtime" in capsys.readouterr().out
+    assert "Your own picks are in notebook 01." in capsys.readouterr().out
 
 
 def test_figures_are_shipped():
@@ -71,15 +71,16 @@ def test_charts_draw_without_errors(monkeypatch):
     _draw_locally(block4.build_pipeline(), block4.KINDS, {"extract_facts", "rule_checks"})
 
 
-def test_empty_picks_are_not_saved_and_show_picks_prints_the_paste_line(capsys):
+def test_empty_picks_are_not_saved_and_saved_picks_print_no_paste_line(capsys):
     cl.save_picks({"Suspicious": ("", ""), "Not covered": ("", "")})
     assert "No pick filled in yet" in capsys.readouterr().out
     assert course.picks_table(1)["your pick"].eq("").all()
     cl.save_picks({"Suspicious": ("agent", "it can look things up"), "Not covered": ("", "")})
-    cl.show_picks(2)
     out = capsys.readouterr().out
-    assert "Copy this line into a note" in out and "cl.save_picks({'Suspicious': ('agent'" in out
-    assert "Not covered" not in out.split("cl.save_picks(")[-1]
+    assert "Saved your picks for 1 kind of claim." in out and "cl.save_picks(" not in out
+    table = course.picks_table(2)
+    assert table.set_index("kind of claim").loc["Suspicious", "your pick"] == "agent"
+    assert table.set_index("kind of claim").loc["Not covered", "your pick"] == ""
 
 
 def test_the_block_2_agent_has_both_runs_in_block_6():
@@ -99,5 +100,6 @@ def test_result_card_marks_a_replayed_run_as_a_demo(capsys, monkeypatch):
 def test_a_pick_can_be_one_word_without_a_reason(capsys):
     """Notebook 01, Exercise D: a plain string is a pick without a reason; an empty string is no pick."""
     cl.save_picks({"Routine and complete": "workflow", "Incomplete": ""})
-    out = capsys.readouterr().out
-    assert "('workflow', '')" in out and "Incomplete" not in out.split("cl.save_picks(")[-1]
+    assert "Saved your picks for 1 kind of claim." in capsys.readouterr().out
+    df = course.picks_table(1).set_index("kind of claim")
+    assert df.loc["Routine and complete", "your pick"] == "workflow" and df.loc["Incomplete", "your pick"] == ""
