@@ -414,7 +414,7 @@ def picks_table(block: int, show: bool = False):
     return df
 
 
-FIGURES = {"the_day": "The day: six blocks, one growing system (slide 3)",
+FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "three_systems": "Kinds of LLM systems (slide 13)",
            "agent_loop": "The agent loop (slide 20)",
            "mcp_architecture": "Host, client and server (slide 49)",
