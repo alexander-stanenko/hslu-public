@@ -15,7 +15,7 @@ from importlib.resources import files
 DAY_QUESTION = "What can we automate, and with which kind of system?"
 
 LAYERS = [("Chatbot, workflow, agent", "09:35"), ("Tools, planning, context", "10:50"), ("MCP servers", "13:00"),
-          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "15:15"), ("Which system, when", "16:15")]
+          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "15:15"), ("Results and takeaways", "16:15")]
 
 BLOCKS = {
     0: {"question": "What is the problem?",
