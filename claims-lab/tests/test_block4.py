@@ -73,6 +73,14 @@ def test_letter_loop_stops_after_three_rounds(offline):
     assert 1 <= out["rounds"] <= B.MAX_ROUNDS and out["letter"]
 
 
+def test_letter_demo_starts_from_the_bad_letter(offline, capsys):
+    B.letter_demo()
+    out = capsys.readouterr().out
+    assert out.startswith("Round 1: a first draft we wrote badly on purpose") and B.BAD_LETTER in out
+    assert "Checker: fails" in out and "Internal term 'request_info' used." in out
+    assert f"Round {B.MAX_ROUNDS}:" in out and f"Round {B.MAX_ROUNDS + 1}:" not in out   # offline, it never passes
+
+
 def test_compare_marks_fixed_and_broken_claims(offline):
     app = B.build_pipeline()
     ids = ["PKG-012", "PKG-019"]

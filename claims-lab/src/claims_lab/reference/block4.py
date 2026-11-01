@@ -547,3 +547,27 @@ def build_letter_loop(check_fn=check_letter, after_fn=after_check):
     g.add_edge("write_letter", "check_letter")
     g.add_conditional_edges("check_letter", after_fn, ["write_letter", END])
     return g.compile()
+
+
+LETTER_DECISION = ClaimDecision(decision="request_info", missing_items=["police_report"],
+                                reasoning="Vandalism requires a police report (guideline §3).")
+
+
+def letter_demo(package_id: str = "PKG-003"):
+    """Part E demo: the letter loop on one claim. The first draft is BAD_LETTER, so the checker has something to find;
+    then the writer revises until the letter passes, at most MAX_ROUNDS drafts."""
+    g = StateGraph(LetterState)
+    g.add_node("write_letter", write_letter)
+    g.add_node("check_letter", check_letter)
+    g.add_edge(START, "check_letter")
+    g.add_conditional_edges("check_letter", after_check, ["write_letter", END])
+    g.add_edge("write_letter", "check_letter")
+    state = {"package": load_package(package_id), "decision": LETTER_DECISION, "letter": BAD_LETTER, "rounds": 1}
+    print(f"Round 1: a first draft we wrote badly on purpose\n\n{BAD_LETTER}\n")
+    for step in g.compile().stream(state, stream_mode="updates"):
+        for node, update in step.items():
+            if node == "write_letter":
+                print(f"Round {update['rounds']}: the writer revises with the checker's problems\n\n{update['letter']}\n")
+            else:
+                print("Checker: passes" if update["passes"] else "Checker: fails",
+                      *[f"  - {p}" for p in update["problems"]], "", sep="\n")
