@@ -5,10 +5,10 @@ with its own share of the Block 2 tools, answer its questions.
     split = block5.check_split(block5.TOOL_SPLIT)                # Exercise A1: who gets which tool
     team = block5.build_team()                                    # supervisor + coverage analyst + red-flag checker
     result = block5.watch(team, cl.load_package("PKG-015"))       # who asked what, who saw what, tokens per agent
-    cl.scoreboard(block2.run(team), label="Block 5 team")
+    cl.scoreboard(block2.run(team), label="claims team")
 
 The rules are the Block 2 checklist, divided among the three agents, and nothing more, so a comparison with the
-Block 2 agent measures the split into a team. No agent has a write tool: as in Block 4, the decision is a structured
+checklist agent measures the split into a team. No agent has a write tool: as in Block 4, the decision is a structured
 answer, and code would record it. The specialists call the same look-up functions that Lakeside's MCP servers wrap;
 over MCP each specialist would connect only to its own servers (a stretch task in notebook 05).
 
@@ -274,7 +274,7 @@ SUPERVISOR_TOOL_DEFINITIONS = [tool("ask_coverage_analyst", description=COVERAGE
 def watch(team, pkg: Package, plot: bool = True) -> dict:
     """Run one claim through the team and print who asked what, what each specialist did and answered, and the model
     calls and input tokens per agent. Then draw what each agent's last request contained, next to an estimate of what
-    one agent with all eight tools (the Block 2 agent) would have carried for the same work. Returns the supervisor's
+    one agent with all eight tools (the checklist agent) would have carried for the same work. Returns the supervisor's
     result."""
     rec = _Recorder()
     result = team.invoke({"messages": [("user", pkg.text())]}, config=run_config(12, callbacks=[rec]))
@@ -325,18 +325,17 @@ def system(team):
     return block2.run(team)
 
 
-def versus_recorded(label: str = "Block 5 team"):
-    """Your latest scoreboard run with this label next to our recorded runs of the Block 2 agent and the Block 4
+def versus_recorded(label: str = "claims team"):
+    """Your latest scoreboard run with this label next to our runs of the checklist agent and the hybrid
     pipeline on the same 8 claims: one table and the chart of accuracy against cost."""
     import pandas as pd
 
-    from ..course import _interactive, reference_runs
+    from ..course import RUN_COLUMNS, _interactive, as_runs, reference_runs
     from ..scoreboard import HISTORY
     from ..style import plot_history
-    cols = ["label", "n", "accuracy", "unsafe_approvals", "llm_calls_per_pkg", "cost_usd_per_pkg"]
     mine = pd.DataFrame([h for h in HISTORY if h["label"] == label][-1:])
     ref = reference_runs(block=5)
-    parts = ([mine[cols].assign(source="you, today")] if len(mine) else []) + [ref[cols].assign(source="our run, Oct 2026")]
+    parts = ([as_runs(mine).assign(source="you, today")] if len(mine) else []) + [ref[RUN_COLUMNS].assign(source="our runs")]
     table = pd.concat(parts, ignore_index=True)
     if _interactive():
         plot_history(mine if len(mine) else None, reference=ref)
@@ -351,7 +350,7 @@ _ALIASES = {"subagents": "subagents as tools", "supervisor": "subagents as tools
 SITUATIONS = [
     ("A customer asks the FAQ chatbot of Block 1 about the deductible, then writes that a pipe burst last night and "
      "they want to report it. Only claims intake may open a claim.", "handoff",
-     "The conversation goes on with the customer, and the chatbot has nothing more to do: control passes to intake."),
+     "Intake takes over the conversation with the customer and opens the claim. The chatbot is not involved any more: nothing comes back to it."),
     ("All claims arrive in one inbox. Motor, household and building claims each have their own terms and tools, and "
      "every claim belongs to one product line, which is written on its policy.", "routing to agents",
      "One easy classification, then one specialist handles the claim alone, with only its product line's terms and tools."),
@@ -390,7 +389,7 @@ def check_patterns(mine: dict) -> int:
 
 # ------------------------------------------------------------------ Stretch tasks
 def team_node(team):
-    """Stretch (a): the team as the judgement step of the Block 4 pipeline. It gets the package and the screen's signs."""
+    """Stretch (a): the team as the judgement step of the hybrid pipeline. It gets the package and the screen's signs."""
     def claims_team(state: block4.ClaimState) -> dict:
         note = ("\n\nNote from the pipeline: all rule checks passed. A first reading found signs that need judgement: "
                 f"{'; '.join(state['judgement'].signs) or 'unspecified'}. Check them before you decide.")
@@ -429,7 +428,7 @@ SEVERAL_POLICIES = ("\nA package can concern several policies, for example a hou
 
 
 def one_agent(llm=None):
-    """The Block 2 agent for packages with several policies: the same eight tools and checklist, one decision per policy."""
+    """The checklist agent for packages with several policies: the same eight tools and checklist, one decision per policy."""
     return create_agent(llm or get_model(), block2.FINAL_TOOLS, system_prompt=block2.PLAN_PROMPT + SEVERAL_POLICIES,
                         response_format=PolicyDecisions, name="one_agent")
 
@@ -684,7 +683,7 @@ def watch_split(team, pkg: Package, plot: bool = True) -> dict:
 
 def storm_claim_versus_recorded(result: dict | None = None):
     """Your run of the team on the storm claim (the result of watch_split on PKG-201), scored per policy, next to our
-    recorded runs of one agent, the team and the pipeline per part on all 3 claims with several policies."""
+    runs of one agent, the team and the pipeline per part on all 3 claims with several policies (ranges over five runs)."""
     import pandas as pd
 
     from ..course import SEVERAL_REFERENCE_RUNS
@@ -701,18 +700,18 @@ def storm_claim_versus_recorded(result: dict | None = None):
                                          f"{'✔' if r['payout_ok'] else '✘'}")
             print(f"{r['policy']} {r['category']:<16} expected {r['expected']:<15} yours {str(r['predicted']):<15} "
                   f"{'✔' if r['correct'] else '✘'}{'  UNSAFE: paid' if r['unsafe_approval'] else ''}{payout}")
-        rows.append({"design": "your team, today", "storm claim (of 3)": sum(r["correct"] for r in scored),
-                     "storm payouts (of 2)": sum(r["payout_ok"] is True for r in scored),
-                     "all 3 claims (of 7)": None, "unsafe approvals": sum(r["unsafe_approval"] for r in scored),
+        rows.append({"design": "your team, today", "runs": 1, "storm claim (of 3)": str(sum(r["correct"] for r in scored)),
+                     "storm payouts (of 2)": str(sum(r["payout_ok"] is True for r in scored)),
+                     "all 3 claims (of 7)": "", "unsafe approvals": str(sum(r["unsafe_approval"] for r in scored)),
                      "calls per claim": result.get("llm_calls"), "cost per claim": round(result.get("cost_usd", 0), 4),
                      "seconds per claim": result.get("seconds")})
     for r in SEVERAL_REFERENCE_RUNS:
-        rows.append({"design": r["label"] + " (Oct 2026)", "storm claim (of 3)": r["storm_claim"],
+        rows.append({"design": r["label"] + " (our runs)", "runs": r["runs"], "storm claim (of 3)": r["storm_claim"],
                      "storm payouts (of 2)": r["storm_payouts"],
                      "all 3 claims (of 7)": r["policies_correct"], "unsafe approvals": r["unsafe_approvals"],
                      "calls per claim": r["llm_calls_per_pkg"], "cost per claim": r["cost_usd_per_pkg"],
                      "seconds per claim": r["seconds_per_pkg"]})
-    return pd.DataFrame(rows).astype({"all 3 claims (of 7)": "Int64"})
+    return pd.DataFrame(rows)
 
 
 # ------------------------------------------------------------------ Debrief demo: separating permissions
@@ -745,7 +744,7 @@ MAIL_LINE = "\nIf documents are missing, write to the customer with send_email, 
 
 
 def mail_agent(llm=None):
-    """The Block 2 agent with Lakeside's general mail tool: it reads the documents and can write to any address."""
+    """The checklist agent with Lakeside's general mail tool: it reads the documents and can write to any address."""
     return create_agent(llm or get_model(), block2.FINAL_TOOLS + [send_email], system_prompt=block2.PLAN_PROMPT + MAIL_LINE,
                         response_format=ClaimDecision, name="one_agent_with_mail")
 
@@ -787,7 +786,7 @@ SEPARATED_LINE = ("\nYou cannot send e-mails yourself. If documents are missing,
 
 
 def separated_team(llm=None):
-    """A reader that cannot write and a writer that cannot read: the Block 2 agent without any write tool, and the
+    """A reader that cannot write and a writer that cannot read: the checklist agent without any write tool, and the
     correspondence agent, reached only through LetterRequest."""
     return create_agent(llm or get_model(), block2.FINAL_TOOLS + [correspondence_tool(correspondent(llm))],
                         system_prompt=block2.PLAN_PROMPT + SEPARATED_LINE, response_format=ClaimDecision,
@@ -842,7 +841,7 @@ def show_leak() -> None:
     from ..data import load_package
     quote = load_package("PKG-211").documents["Offerte_VH-8812.txt"]
     print(quote[quote.index("Notice to insurers"):].strip())
-    print("\nOne of the e-mails one agent sent to the shop (run 1 of 10; its decision was right, so a scoreboard counts "
+    print("\nOne of the e-mails one agent sent to the shop (one of our 15 runs; its decision was right, so a scoreboard counts "
           "the run as correct):\n")
     print(LEAKED_EMAIL)
 

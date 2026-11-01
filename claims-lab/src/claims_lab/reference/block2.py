@@ -2,7 +2,7 @@
 
     from claims_lab.reference import block2
     cl.scoreboard(block2.run(block2.bad_agent()), label="bad tools")
-    cl.scoreboard(block2.run(block2.final_agent()), n=None, label="Block 2 final")   # the baseline for Block 3
+    cl.scoreboard(block2.run(block2.final_agent()), n=None, label="checklist agent")   # the baseline for Block 3
     block2.spot_check_steps(block2.final_agent(cl.get_model(effort="low")), "PKG-019", "PKG-015")
 """
 from __future__ import annotations

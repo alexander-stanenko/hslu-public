@@ -88,12 +88,12 @@ def test_team_decides_offline_and_the_scoreboard_counts_every_agent(capsys):
     out = capsys.readouterr().out
     assert "coverage analyst" in out and "red flag checker" in out and "calls search_claims_by_invoice" in out
     assert result["structured_response"].decision == "refer_adjuster"
-    df = cl.scoreboard(B.system(team), ids=["PKG-015", "PKG-012"], label="Block 5 team", show=False)
+    df = cl.scoreboard(B.system(team), ids=["PKG-015", "PKG-012"], label="claims team", show=False)
     assert (df["llm_calls"] >= 6).all()  # the supervisor's calls and both specialists' calls
-    table = B.versus_recorded("Block 5 team")
-    assert list(table["label"]) == ["Block 5 team", "Block 2 agent (run of 28 Oct)", "Block 2 agent (run of 30 Oct, the run notebook 04 replays)", "Block 4 pipeline (run of 28 Oct)", "Block 4 pipeline (run of 29 Oct)",
-                                    "Block 5 team, run 1", "Block 5 team, run 2", "Block 5 team, run of 30 Oct (replayed in C)"]
-    assert list(table["source"]) == ["you, today"] + ["our run, Oct 2026"] * 7
+    table = B.versus_recorded("claims team")
+    assert list(table["label"]) == ["claims team", "checklist agent", "hybrid pipeline", "claims team"]
+    assert list(table["source"]) == ["you, today"] + ["our runs"] * 3
+    assert table.iloc[0]["runs"] == 1 and table.iloc[3]["correct"] == "4 to 6"
 
 
 def test_specialists_see_only_the_question():
@@ -125,9 +125,8 @@ def test_customer_comms_drafts_a_letter_and_sends_nothing():
 def test_block5_compares_with_the_recorded_block4_runs_and_our_team():
     b4 = {r["label"]: r for r in course.REFERENCE_RUNS if r["block"] == 4}
     b5 = [r for r in course.REFERENCE_RUNS if r["block"] == 5]
-    assert [r["label"] for r in b5] == ["Block 2 agent (run of 28 Oct)", "Block 2 agent (run of 30 Oct, the run notebook 04 replays)", "Block 4 pipeline (run of 28 Oct)", "Block 4 pipeline (run of 29 Oct)",
-                                        "Block 5 team, run 1", "Block 5 team, run 2", "Block 5 team, run of 30 Oct (replayed in C)"]
-    for r in b5[:4]:
+    assert [r["label"] for r in b5] == ["checklist agent", "hybrid pipeline", "claims team"]
+    for r in b5[:2]:
         assert {**r, "block": 4} == b4[r["label"]]
     assert len(course.BLOCKS[5]["tell"]) == 3 and set(course.EVIDENCE[5]) <= {k for k, _ in course.kinds(5)}
 
@@ -175,19 +174,16 @@ def test_the_storm_claim_run_is_scored_from_the_watch_and_set_next_to_our_runs(c
     table = B.storm_claim_versus_recorded(result)
     assert result["llm_calls"] == calls                                   # scoring makes no model call
     assert "P-10063" in capsys.readouterr().out
-    assert len(table) == 6 and table.iloc[0]["design"] == "your team, today"
-    assert pd.isna(table.iloc[0]["all 3 claims (of 7)"]) and 0 <= table.iloc[0]["storm claim (of 3)"] <= 3
-    assert len(B.storm_claim_versus_recorded()) == 5
+    assert len(table) == 4 and table.iloc[0]["design"] == "your team, today"
+    assert table.iloc[0]["all 3 claims (of 7)"] == "" and 0 <= int(table.iloc[0]["storm claim (of 3)"]) <= 3
+    assert len(B.storm_claim_versus_recorded()) == 3
 
 
-def test_recorded_several_policy_runs_add_up_to_what_the_slides_say():
+def test_recorded_several_policy_runs_match_the_slide():
     runs = {r["label"]: r for r in course.SEVERAL_REFERENCE_RUNS}
-    one = [runs["one agent, run 1"], runs["one agent, run 2"]]
-    team = [runs["product-line team, run 1"], runs["product-line team, run 2"]]
-    assert sum(r["policies_correct"] for r in one) == sum(r["policies_correct"] for r in team) == 9
-    assert sum(r["unsafe_approvals"] for r in one) == 4 and sum(r["unsafe_approvals"] for r in team) == 5
-    assert runs["pipeline per part"]["policies_correct"] == 7 and runs["pipeline per part"]["unsafe_approvals"] == 0
-    assert all(r["policies"] == 7 for r in runs.values())
+    assert runs["one agent"]["policies_correct"] == runs["product-line team"]["policies_correct"] == "4 to 6"
+    assert runs["pipeline per part"]["policies_correct"] == "6 to 7" and runs["pipeline per part"]["unsafe_approvals"] == "0"
+    assert all(r["policies"] == 7 and r["runs"] == 5 for r in runs.values())
 
 
 def test_the_sixth_kind_appears_from_block5_on():
@@ -258,8 +254,8 @@ def test_smuggling_is_refused_and_a_clean_request_passes(capsys):
 def test_recorded_permissions_runs_match_the_slide_and_the_leak_is_shown(capsys):
     runs = {r["design"]: r for r in course.PERMISSIONS_REFERENCE_RUNS}
     one, team = runs["one agent with the mail tool"], runs["reader and writer (team)"]
-    assert (one["runs"], one["runs_mailing_the_shop"], one["with_policy_record"]) == (10, 6, 2)
-    assert (team["runs"], team["runs_mailing_the_shop"]) == (2, 0) and one["decision_right"] == one["runs"]
+    assert (one["runs"], one["runs_mailing_the_shop"], one["with_policy_record"]) == (15, 9, 3)
+    assert (team["runs"], team["runs_mailing_the_shop"]) == (5, 0) and one["decision_right"] == one["runs"]
     assert B.INJECTION_ADDRESS in course.LEAKED_EMAIL and "P-10071" in course.LEAKED_EMAIL
     B.show_leak()
     out = capsys.readouterr().out
@@ -268,7 +264,7 @@ def test_recorded_permissions_runs_match_the_slide_and_the_leak_is_shown(capsys)
 
 def test_the_storm_claim_table_shows_payouts(capsys):
     table = B.storm_claim_versus_recorded()
-    assert list(table["storm payouts (of 2)"]) == [1, 2, 2, 2, 2]
+    assert list(table["storm payouts (of 2)"]) == ["0 to 2", "1 to 2", "2 in every run"]
 
 
 def test_agent_cards_show_the_prompts_the_code_uses():

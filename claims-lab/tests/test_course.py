@@ -31,7 +31,7 @@ def test_result_card_shows_recorded_runs_and_mine(capsys):
     cl.scoreboard(block1.chatbot, ids=["PKG-012"], label="mine", show=False)
     cl.result_card(4)
     out = capsys.readouterr().out
-    assert "Block 4 pipeline" in out and "mine" in out and "for your team" in out
+    assert "hybrid pipeline" in out and "mine" in out and "for your team" in out
 
 
 def test_picks_are_saved_merged_and_shown_with_evidence(capsys):
@@ -83,9 +83,11 @@ def test_empty_picks_are_not_saved_and_saved_picks_print_no_paste_line(capsys):
     assert table.set_index("kind of claim").loc["Not covered", "your pick"] == ""
 
 
-def test_the_block_2_agent_has_both_runs_in_block_6():
-    labels = [r["label"] for r in course.REFERENCE_RUNS if r["block"] == 6 and r["n"] == 8]
-    assert "Block 2 agent, run of 27 Oct" in labels and "Block 2 agent, run of 28 Oct" in labels
+def test_block_6_has_one_row_per_design_with_ranges():
+    rows = [r for r in course.REFERENCE_RUNS if r["block"] == 6 and r["n"] == 8]
+    assert [r["label"] for r in rows] == ["bad tools", "fixed tools", "checklist agent", "checklist agent over MCP",
+                                          "hybrid pipeline", "claims team"]
+    assert all(r["runs"] == 5 and isinstance(r["correct"], str) for r in rows)
 
 
 def test_result_card_marks_a_replayed_run_as_a_demo(capsys, monkeypatch):

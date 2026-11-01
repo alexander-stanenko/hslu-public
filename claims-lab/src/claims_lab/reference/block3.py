@@ -1,4 +1,4 @@
-"""Block 3 reference: a server of your own, the Block 2 agent over MCP, elicitation, and the bridge (stretch).
+"""Block 3 reference: a server of your own, the checklist agent over MCP, elicitation, and the bridge (stretch).
 
     from claims_lab.reference import block3
     block3.write_server()                                   # catch-up for Part A: writes lakeside_server.py
@@ -238,7 +238,7 @@ async def show_wire(server, tool: str = "lookup_policy", arguments: dict | None 
     return msgs
 
 
-# ------------------------------------------------------------------ Part B: the Block 2 agent over MCP
+# ------------------------------------------------------------------ Part B: the checklist agent over MCP
 READ_SERVERS = ["claims_systems", "policy_docs", "reference_data"]
 
 
@@ -294,7 +294,7 @@ async def time_sessions(connection: dict, tool: str = "lookup_policy", arguments
 
 
 def mcp_agent(tools: list, llm=None):
-    """The Block 2 final agent with its tools from MCP servers: same prompt, same tool text, new wiring."""
+    """The checklist agent with its tools from MCP servers: same prompt, same tool text, new wiring."""
     return create_agent(llm or get_model(), tools, system_prompt=block2.PLAN_PROMPT, response_format=ClaimDecision)
 
 

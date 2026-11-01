@@ -1,6 +1,6 @@
 """Lakeside's systems as plain Python functions: what a company's existing APIs would be.
 
-They return Python data (dicts, lists, numbers), so code can use them directly: the Block 4 pipeline, the MCP servers,
+They return Python data (dicts, lists, numbers), so code can use them directly: the hybrid pipeline, the MCP servers,
 the tests. The notebooks turn them into LangChain tools with `@tool` from langchain_core.tools, and each tool returns
 `json.dumps(...)` of the result, so the model always gets text, an empty result included.
 """

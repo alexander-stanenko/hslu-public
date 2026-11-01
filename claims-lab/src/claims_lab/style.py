@@ -24,8 +24,8 @@ def use_hslu_style() -> None:
 
 def plot_history(df, reference=None) -> None:
     """Every scoreboard run as one point: cost per claim against decision accuracy. Runs with unsafe approvals are
-    marked in magenta, with their number; the latest run has a black outline. `reference` (our recorded runs) are drawn
-    as hollow squares."""
+    marked in magenta, with their number; the latest run has a black outline. `reference` (our runs, one row per
+    design, averaged over its runs) are drawn as hollow squares, with the range of unsafe approvals in the key."""
     import matplotlib.pyplot as plt
     use_hslu_style()
     unsafe_colour = HSLU["accents"]["magenta"]["base"]
@@ -34,13 +34,14 @@ def plot_history(df, reference=None) -> None:
     if reference is not None:
         for j, (_, r) in enumerate(reference.iterrows()):
             bad = r["unsafe_approvals"] > 0
-            tag = "abcdefgh"[j]
+            tag = "abcdefghijklmnopqrstuvwxyz"[j]
             ax.scatter(r["cost_usd_per_pkg"], r["accuracy"], s=110, marker="s", facecolor="white", zorder=2,
                        edgecolor=unsafe_colour if bad else "#555555", linewidth=1.5)
             ax.annotate(tag, (r["cost_usd_per_pkg"], r["accuracy"]), xytext=(-4, -16), textcoords="offset points",
                         fontsize=9, color="#555555")
-            key.append(f"{tag} = {r['label']}" + (f" (unsafe: {int(r['unsafe_approvals'])})" if bad else ""))
-        ax.text(1.0, 0.02, "Our recorded runs:\n" + "\n".join(key), transform=ax.transAxes, ha="right", va="bottom",
+            runs = f", {r['runs']} runs" if r.get("runs", 1) > 1 else ""
+            key.append(f"{tag} = {r['label']}{runs}" + (f" (unsafe: {r.get('unsafe', r['unsafe_approvals'])})" if bad else ""))
+        ax.text(1.0, 0.02, "Our runs (averages):\n" + "\n".join(key), transform=ax.transAxes, ha="right", va="bottom",
                 fontsize=8, color="#555555")
     if df is not None:
         for i, r in df.reset_index(drop=True).iterrows():
@@ -54,7 +55,7 @@ def plot_history(df, reference=None) -> None:
     ax.set_ylim(0, 1.08)
     ax.set_xlim(left=0)
     title = "Each design: accuracy against cost (magenta: paid claims it should not have)"
-    ax.set_title(title + ("\nfilled: your runs today · hollow squares: our recorded runs" if reference is not None else ""))
+    ax.set_title(title + ("\nfilled: your runs today · hollow squares: our runs, averaged per design" if reference is not None else ""))
     ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
     show(plt.gcf())

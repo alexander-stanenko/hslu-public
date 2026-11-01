@@ -281,7 +281,7 @@ JUDGEMENT_RULES = ("For the claims you get here, all rule checks have passed and
 
 
 def judgement_agent(llm=None, judgement_rules: str = JUDGEMENT_RULES):
-    """The Block 2 agent with extra rules for the claims that need judgement (none: exactly the Block 2 agent)."""
+    """The checklist agent with extra rules for the claims that need judgement (none: exactly the checklist agent)."""
     prompt = block2.PLAN_PROMPT + (f"\n\n{judgement_rules}" if judgement_rules else "")
     return create_agent(llm or get_model(), block2.FINAL_TOOLS, system_prompt=prompt, response_format=ClaimDecision)
 
@@ -334,7 +334,7 @@ def build_pipeline(route_fn=route, llm=None, approval_step: bool = False, saver=
                    judgement_rules: str = JUDGEMENT_RULES, claims_agent=None):
     """Exercise B2 solution: the hybrid pipeline. With approval_step=True (stretch), every fast-track payout pauses for a
     person; such a graph needs a checkpointer (an in-memory one by default) and a thread_id in each run's config.
-    claims_agent replaces the judgement step (notebook 05, stretch: the Block 5 team as that step)."""
+    claims_agent replaces the judgement step (notebook 05, stretch: the claims team as that step)."""
     g = StateGraph(ClaimState)
     g.add_node("extract_facts", extract_facts)
     g.add_node("screen", screen_fn)
