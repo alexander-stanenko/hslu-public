@@ -19,7 +19,7 @@ def work(tmp_path, monkeypatch):
 def test_where_we_are_names_the_block_and_what_is_open(capsys):
     cl.where_we_are(3)
     out = capsys.readouterr().out
-    assert course.COO_QUESTION in out and "other applications" in out and "inside one notebook" in out
+    assert course.DAY_QUESTION in out and "other applications" in out and "inside one notebook" in out
 
 
 def test_every_block_with_a_result_has_three_sentences():

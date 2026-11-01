@@ -1,6 +1,6 @@
 """The thread of the day inside the notebooks: where we are, the result of a block, the picks table and figures.
 
-    cl.where_we_are(2)      # the six layers with Block 2 highlighted, the COO's question, what Block 1 left open
+    cl.where_we_are(2)      # the six layers with Block 2 highlighted, the day's question, what Block 1 left open
     cl.result_card(2)       # this session's scoreboard runs next to our recorded runs, and what to tell your team
     cl.save_picks({...})    # notebook 01, Exercise D: your pick per kind of claim
     cl.show_picks(4)        # your picks next to what the measurements of Blocks 1 to 4 say
@@ -12,10 +12,10 @@ import json
 import os
 from importlib.resources import files
 
-COO_QUESTION = "What can we automate, with which kind of system, and how do we know that it works?"
+DAY_QUESTION = "What can we automate, and with which kind of system?"
 
 LAYERS = [("Chatbot, workflow, agent", "09:35"), ("Tools, planning, context", "10:50"), ("MCP servers", "13:00"),
-          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "15:15"), ("Back to the COO", "16:15")]
+          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "15:15"), ("Which system, when", "16:15")]
 
 BLOCKS = {
     0: {"question": "What is the problem?",
@@ -69,7 +69,7 @@ BLOCKS = {
                  "over five runs each, at almost twice the cost) and on claims with several policies (4 to 6 of 7 "
                  "decisions per run for both); the pipeline, split by policy in code where needed, stayed the most "
                  "accurate."]},
-    6: {"question": "The answer to the COO: which system for which kind of claim, and how do we know?",
+    6: {"question": "Which system for which kind of claim, and how sure are we?",
         "open": "From Block 5: every design of the day is measured on the same claims. Which system for which kind of "
                 "claim, and does the answer hold on claims nobody has seen?",
         "tell": ["Put every rule that can be written down in code. In our runs no rule paid a claim it should not have. "
@@ -201,7 +201,7 @@ EVIDENCE = {
                                         "agent and the product-line team each decided 4 to 6 right, with 1 to 3 "
                                         "unsafe approvals; the pipeline per part decided 6 to 7 right and approved "
                                         "nothing unsafe."},
-    # Block 6: the answer to the COO, one line per kind of claim (slide 97).
+    # Block 6: which system for which kind of claim, one line per kind (slide 97).
     6: {"Routine and complete": "Answer: the pipeline. Code checks the rules and computes the payout; no agent needed.",
         "Incomplete": "Answer: a rule asks the customer (request_info), and the letter loop writes to them; with a person "
                       "on the line, the server can ask (elicitation).",
@@ -256,12 +256,12 @@ def plot_layers(active: int) -> None:
 
 
 def where_we_are(block: int) -> None:
-    """Header of every notebook: the growing system with this block highlighted, the COO's question, the question of
+    """Header of every notebook: the growing system with this block highlighted, the question of the day, the question of
     this block and what the previous block left open."""
     b = BLOCKS[block]
     if block >= 1:
         plot_layers(block)
-    _markdown(f"**The COO's question for today:** {COO_QUESTION}\n\n"
+    _markdown(f"**The question for today:** {DAY_QUESTION}\n\n"
               f"**This block:** {b['question']}\n\n"
               f"**Where we start:** {b['open']}")
 
@@ -374,7 +374,7 @@ FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "mcp_architecture": "Host, client and server (slide 51)",
            "hybrid_pipeline": "The hybrid pipeline (slide 69)",
            "claims_team": "Lakeside's claims team (slide 86)",
-           "storm_claim": "The storm claim: one storm, three policies (slide 81)"}
+           "storm_claim": "The storm claim: one storm, three policies (slide 84)"}
 
 
 def figure(name: str, width: int = 900) -> None:
