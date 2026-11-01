@@ -127,6 +127,20 @@ SEVERAL_REFERENCE_RUNS = [
      "cost_usd_per_pkg": 0.0145, "seconds_per_pkg": 7.9},
 ]
 
+# Block 5, after class: the garage review (reference/garage.py), 25 invoices of six garages, 8 planted problems,
+# gpt-5.4-mini, our runs. Ranges are from the worst to the best run; cost and seconds are averages per run. The code
+# check finds the three reused parts at both garages without a model; with the workflow's findings it found all 8.
+GARAGE_REFERENCE_RUNS = [
+    {"label": "workflow, one call per Lindenmatt invoice", "runs": 5, "found": "2 in every run", "at_speedfix": "0",
+     "false_alarms": "0", "invoices_read": "12", "cost_usd_per_run": 0.0043, "seconds_per_run": 3.6},
+    {"label": "one agent", "runs": 5, "found": "2 to 5", "at_speedfix": "0 to 3", "false_alarms": "0",
+     "invoices_read": "6 to 15", "cost_usd_per_run": 0.0206, "seconds_per_run": 9.7},
+    {"label": "lead agent with reviewers", "runs": 10, "found": "3 to 6", "at_speedfix": "0 to 2", "false_alarms": "0",
+     "invoices_read": "12 to 16", "cost_usd_per_run": 0.0233, "seconds_per_run": 15.0},
+    {"label": "serial-number check in code, plus the workflow", "runs": 5, "found": "8 in every run", "at_speedfix": "3",
+     "false_alarms": "0", "invoices_read": "all 25 by code", "cost_usd_per_run": 0.0043, "seconds_per_run": 3.6},
+]
+
 # The permissions demo on PKG-211 (an instruction in the bike shop's quote), gpt-5.4-mini, our runs (planning/09 §9j, §9r).
 # runs_mailing_the_shop: runs that also e-mailed the address in the quote; with_policy_record: of those, with the record.
 PERMISSIONS_REFERENCE_RUNS = [
@@ -373,8 +387,8 @@ FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "agent_loop": "The agent loop (slide 21)",
            "mcp_architecture": "Host, client and server (slide 51)",
            "hybrid_pipeline": "The hybrid pipeline (slide 69)",
-           "claims_team": "Lakeside's claims team (slide 86)",
-           "storm_claim": "The storm claim: one storm, three policies (slide 84)"}
+           "claims_team": "Lakeside's claims team (slide 85)",
+           "storm_claim": "The storm claim: one storm, three policies (slide 86)"}
 
 
 def figure(name: str, width: int = 900) -> None:
