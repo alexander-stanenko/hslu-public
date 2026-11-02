@@ -14,7 +14,7 @@ from importlib.resources import files
 
 DAY_QUESTION = "What can we automate, and with which kind of system?"
 
-LAYERS = [("Chatbot, workflow, agent", "09:35"), ("Tools, planning, context", "10:50"), ("MCP servers", "13:00"),
+LAYERS = [("Chatbot, workflow, agent", "09:35"), ("Tools, instructions, context", "10:50"), ("MCP servers", "13:00"),
           ("Orchestrated workflow", "14:00"), ("Multi-agent team", "15:15"), ("Results and takeaways", "16:15")]
 
 BLOCKS = {
@@ -385,10 +385,10 @@ def picks_table(block: int, show: bool = False):
 FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "three_systems": "Kinds of LLM systems (slide 14)",
            "agent_loop": "The agent loop (slide 21)",
-           "mcp_architecture": "Host, client and server (slide 51)",
-           "hybrid_pipeline": "The hybrid pipeline (slide 69)",
-           "claims_team": "Lakeside's claims team (slide 85)",
-           "storm_claim": "The storm claim: one storm, three policies (slide 86)"}
+           "mcp_architecture": "Host, client and server (slide 50)",
+           "hybrid_pipeline": "The hybrid pipeline (slide 68)",
+           "claims_team": "Lakeside's claims team (slide 84)",
+           "storm_claim": "The storm claim: one storm, three policies (slide 85)"}
 
 
 def figure(name: str, width: int = 900) -> None:
