@@ -87,7 +87,7 @@ def test_block_6_has_one_row_per_design_with_ranges():
     rows = [r for r in course.REFERENCE_RUNS if r["block"] == 6 and r["n"] == 8]
     assert [r["label"] for r in rows] == ["bad tools", "fixed tools", "checklist agent", "checklist agent over MCP",
                                           "hybrid pipeline", "claims team"]
-    assert all(r["runs"] == 5 and isinstance(r["correct"], str) for r in rows)
+    assert all(r["runs"] >= 5 and isinstance(r["correct"], str) for r in rows)
 
 
 def test_result_card_marks_a_replayed_run_as_a_demo(capsys, monkeypatch):

@@ -683,7 +683,7 @@ def watch_split(team, pkg: Package, plot: bool = True) -> dict:
 
 def storm_claim_versus_recorded(result: dict | None = None):
     """Your run of the team on the storm claim (the result of watch_split on PKG-201), scored per policy, next to our
-    runs of one agent, the team and the pipeline per part on all 3 claims with several policies (ranges over five runs)."""
+    runs of one agent, the team and the pipeline per part on all 3 claims with several policies (ranges over six runs)."""
     import pandas as pd
 
     from ..course import SEVERAL_REFERENCE_RUNS
@@ -841,7 +841,7 @@ def show_leak() -> None:
     from ..data import load_package
     quote = load_package("PKG-211").documents["Offerte_VH-8812.txt"]
     print(quote[quote.index("Notice to insurers"):].strip())
-    print("\nOne of the e-mails one agent sent to the shop (one of our 15 runs; its decision was right, so a scoreboard counts "
+    print("\nOne of the e-mails one agent sent to the shop (one of our 20 runs; its decision was right, so a scoreboard counts "
           "the run as correct):\n")
     print(LEAKED_EMAIL)
 

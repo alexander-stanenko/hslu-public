@@ -183,7 +183,7 @@ def test_recorded_several_policy_runs_match_the_slide():
     runs = {r["label"]: r for r in course.SEVERAL_REFERENCE_RUNS}
     assert runs["one agent"]["policies_correct"] == runs["product-line team"]["policies_correct"] == "4 to 6"
     assert runs["pipeline per part"]["policies_correct"] == "6 to 7" and runs["pipeline per part"]["unsafe_approvals"] == "0"
-    assert all(r["policies"] == 7 and r["runs"] == 5 for r in runs.values())
+    assert all(r["policies"] == 7 and r["runs"] == 6 for r in runs.values())
 
 
 def test_the_sixth_kind_appears_from_block5_on():
@@ -254,8 +254,8 @@ def test_smuggling_is_refused_and_a_clean_request_passes(capsys):
 def test_recorded_permissions_runs_match_the_slide_and_the_leak_is_shown(capsys):
     runs = {r["design"]: r for r in course.PERMISSIONS_REFERENCE_RUNS}
     one, team = runs["one agent with the mail tool"], runs["reader and writer (team)"]
-    assert (one["runs"], one["runs_mailing_the_shop"], one["with_policy_record"]) == (15, 9, 3)
-    assert (team["runs"], team["runs_mailing_the_shop"]) == (5, 0) and one["decision_right"] == one["runs"]
+    assert (one["runs"], one["runs_mailing_the_shop"], one["with_policy_record"]) == (20, 14, 3)
+    assert (team["runs"], team["runs_mailing_the_shop"]) == (7, 0) and one["decision_right"] == one["runs"]
     assert B.INJECTION_ADDRESS in course.LEAKED_EMAIL and "P-10071" in course.LEAKED_EMAIL
     B.show_leak()
     out = capsys.readouterr().out
