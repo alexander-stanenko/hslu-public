@@ -14,8 +14,8 @@ from importlib.resources import files
 
 DAY_QUESTION = "What can we automate, and with which kind of system?"
 
-LAYERS = [("Chatbot, workflow, agent", "09:35"), ("Tools, instructions, context", "10:50"), ("MCP servers", "13:00"),
-          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "15:15"), ("Results and takeaways", "16:15")]
+LAYERS = [("Chatbot, workflow, agent", "09:28"), ("Tools, instructions, context", "09:58"), ("MCP servers", "13:00"),
+          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "14:20"), ("Results and takeaways", "16:12")]
 
 BLOCKS = {
     0: {"question": "What is the problem?",
@@ -383,9 +383,9 @@ def picks_table(block: int, show: bool = False):
 
 
 FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
-           "three_systems": "Kinds of LLM systems (slide 14)",
+           "three_systems": "A spectrum of autonomy (slide 15)",
            "agent_loop": "The agent loop (slide 21)",
-           "mcp_architecture": "Host, client and server (slide 50)",
+           "mcp_architecture": "MCP: host, client and server (slide 50)",
            "hybrid_pipeline": "The hybrid pipeline (slide 68)",
            "claims_team": "Lakeside's claims team (slide 84)",
            "storm_claim": "The storm claim: one storm, three policies (slide 85)"}
