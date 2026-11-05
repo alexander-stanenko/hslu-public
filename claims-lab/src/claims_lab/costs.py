@@ -1,4 +1,4 @@
-"""Token and cost metering — and hard spending guards — for LangChain model calls.
+"""Token and cost metering, and hard spending guards, for LangChain model calls.
 
 A `CostMeter` is a callback handler: attach it to a model (`callbacks=[meter]`) or pass it in a run
 config. It counts live calls, and separately the calls replayed from the cache with the tokens and cost they had
@@ -172,8 +172,8 @@ class CostMeter(BaseCallbackHandler):
                     replayed_cost_usd=round(self.replayed_cost_usd, 5))
 
     def __str__(self) -> str:
-        s = f"{self.calls} LLM calls · {self.input_tokens:,} in / {self.output_tokens:,} out tokens · ${self.cost_usd:.4f}"
-        return s + (f" · {self.cache_hits} replayed from cache (recorded cost ${self.replayed_cost_usd:.4f})" if self.cache_hits else "")
+        s = f"{self.calls} LLM calls, {self.input_tokens:,} in / {self.output_tokens:,} out tokens, ${self.cost_usd:.4f}"
+        return s + (f", {self.cache_hits} replayed from cache (recorded cost ${self.replayed_cost_usd:.4f})" if self.cache_hits else "")
 
 
 # Session-wide guard on every model from get_model(): spending cap per notebook session and a cap on the size

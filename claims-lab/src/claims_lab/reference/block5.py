@@ -1,5 +1,5 @@
-"""Block 5 reference: a claims team of three agents. A supervisor reads the claim and decides; two specialists, each
-with its own share of the Block 2 tools, answer its questions.
+"""Reference for notebook 05: a claims team of three agents. A supervisor reads the claim and decides; two specialists, each
+with its own share of the notebook 02 tools, answer its questions.
 
     from claims_lab.reference import block5
     split = block5.check_split(block5.TOOL_SPLIT)                # Exercise A1: who gets which tool
@@ -7,8 +7,8 @@ with its own share of the Block 2 tools, answer its questions.
     result = block5.watch(team, cl.load_package("PKG-015"))       # who asked what, who saw what, tokens per agent
     cl.scoreboard(block2.run(team), label="claims team")
 
-The rules are the Block 2 checklist, divided among the three agents, and nothing more, so a comparison with the
-checklist agent measures the split into a team. No agent has a write tool: as in Block 4, the decision is a structured
+The rules are the checklist from notebook 02, divided among the three agents, and nothing more, so a comparison with the
+checklist agent measures the split into a team. No agent has a write tool: as in notebook 04, the decision is a structured
 answer, and code would record it. The specialists call the same look-up functions that Lakeside's MCP servers wrap;
 over MCP each specialist would connect only to its own servers (a stretch task in notebook 05).
 
@@ -35,11 +35,11 @@ from ..schemas import ClaimDecision, PolicyDecision, PolicyDecisions
 from . import block2, block4
 
 # ------------------------------------------------------------------ Part A: the specialists and their tools
-TOOLS = {t.name: t for t in block2.FINAL_TOOLS}   # the eight Block 2 tools
+TOOLS = {t.name: t for t in block2.FINAL_TOOLS}   # the eight tools from notebook 02
 WRITE_TOOL_NAMES = {f.__name__ for f in T.WRITE_FUNCTIONS}   # request_documents (sends an e-mail), record_decision (pays)
 SPECIALISTS = ("coverage_analyst", "red_flag_checker")
 
-# Exercise A1 solution. The checklist step each tool serves (Block 2's checklist; step 6 is the payout).
+# Exercise A1 solution. The checklist step each tool serves (the checklist from notebook 02; step 6 is the payout).
 TOOL_SPLIT = {
     "coverage_analyst": ["lookup_policy", "find_policies", "search_policy_terms", "calc_payout"],
     "red_flag_checker": ["get_claim_history", "search_claims_by_invoice", "get_price_range", "check_weather"],
@@ -114,14 +114,14 @@ def _split_problem(split) -> str | None:
 
 
 def check_split(split) -> dict[str, list[BaseTool]]:
-    """Exercise A1: check a split of the eight Block 2 tools between the two specialists, print it as a table and
+    """Exercise A1: check a split of the eight tools from notebook 02 between the two specialists, print it as a table and
     return {specialist: [tools]}. An unfinished or wrong split is replaced by ours, with the reason."""
     problem = _split_problem(split)
     if problem:
         print(f"Your split is not finished or not right yet ({problem}).\nThe cells below use ours, block5.TOOL_SPLIT.\n")
         split = TOOL_SPLIT
     else:
-        print("✔ Every tool has exactly one owner, every check has its tools, and no agent can send or pay.\n")
+        print("Yes: every tool has exactly one owner, every check has its tools, and no agent can send or pay.\n")
     for s in SPECIALISTS:
         for n in split[s]:
             print(f"  {s.replace('_', ' '):<18} {n:<26} checklist step {STEP[n]}")
@@ -221,7 +221,7 @@ def check_ask_tool(candidate, red_flags=None) -> BaseTool:
         print(f"Your ask_red_flag_checker is not finished yet ({problem}).\nThe cells below use ours, with this description:\n"
               f"  {RED_FLAG_DESCRIPTION}")
         return ask_tool(red_flags or red_flag_checker(), "ask_red_flag_checker", RED_FLAG_DESCRIPTION)
-    print(f"✔ {candidate.name} is a tool that takes a question, and its description names what the checker needs.")
+    print(f"Yes: {candidate.name} is a tool that takes a question, and its description names what the checker needs.")
     return candidate
 
 
@@ -255,7 +255,7 @@ def _sent(messages) -> tuple[int, int]:
 
 def _short(text: str, n: int = 150) -> str:
     text = " ".join(str(text).split())
-    return text if len(text) <= n else text[: n - 1] + "…"
+    return text if len(text) <= n else text[: n - 3] + "..."
 
 
 def _definitions(tools) -> int:
@@ -281,12 +281,12 @@ def watch(team, pkg: Package, plot: bool = True) -> dict:
     asked = rec.runs
     print(f"supervisor          reads {pkg.package_id} (about {_tokens(pkg.text()):,} tokens) and asks:")
     for q in asked:
-        print(f"  → {(q['agent'] or 'specialist').replace('_', ' '):<17} {_short(q['question'], 140)}")
+        print(f"  to {(q['agent'] or 'specialist').replace('_', ' '):<17} {_short(q['question'], 140)}")
         for m in q["messages"]:
             for tc in getattr(m, "tool_calls", None) or []:
                 args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
                 print(f"      calls {_short(tc['name'] + '(' + args + ')', 100)}")
-        print(f"    ← answers: {_short(q['messages'][-1].text, 220)}")
+        print(f"    answers: {_short(q['messages'][-1].text, 220)}")
     d = result.get("structured_response")
     if d is not None:
         print(f"supervisor          decides {d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else "")
@@ -302,12 +302,12 @@ def watch(team, pkg: Package, plot: bool = True) -> dict:
     for name, messages, tools, prompt in runs:
         calls, tokens = _sent(messages)
         total_calls, total_tokens = total_calls + calls, total_tokens + tokens
-        print(f"  {name.replace('_', ' '):<18} {calls} calls · {tokens:>6,} input tokens")
+        print(f"  {name.replace('_', ' '):<18} {calls} calls, {tokens:>6,} input tokens")
         key, i = name.replace("_", " "), 2
         while key in contexts:  # a specialist asked twice
             key, i = f"{name.replace('_', ' ')} ({i})", i + 1
         contexts[key] = _parts(messages, tools, prompt)
-    print(f"  {'team':<18} {total_calls} calls · {total_tokens:>6,} input tokens")
+    print(f"  {'team':<18} {total_calls} calls, {total_tokens:>6,} input tokens")
     contexts["one agent (estimate)"] = {
         "system prompt": _tokens(block2.PLAN_PROMPT),
         "tool definitions": _definitions(block2.FINAL_TOOLS),
@@ -348,7 +348,7 @@ _ALIASES = {"subagents": "subagents as tools", "supervisor": "subagents as tools
             "hand-off": "handoff", "routing": "routing to agents", "router": "routing to agents",
             "single agent": "one agent", "no team": "one agent"}
 SITUATIONS = [
-    ("A customer asks the FAQ chatbot of Block 1 about the deductible, then writes that a pipe burst last night and "
+    ("A customer asks the FAQ chatbot of notebook 01 about the deductible, then writes that a pipe burst last night and "
      "they want to report it. Only claims intake may open a claim.", "handoff",
      "Intake takes over the conversation with the customer and opens the claim. The chatbot is not involved any more: nothing comes back to it."),
     ("All claims arrive in one inbox. Motor, household and building claims each have their own terms and tools, and "
@@ -379,9 +379,9 @@ def check_patterns(mine: dict) -> int:
     for i, (_, ours, why) in enumerate(SITUATIONS, 1):
         given = str(mine.get(i) or "").strip().lower()
         given = _ALIASES.get(given, given)
-        mark = "·" if not given else "✔" if given == ours else "✘"
-        right += mark == "✔"
-        print(f"{mark} {i}. ours: {ours:<19} {'' if given in ('', ours) else f'(yours: {given}) '}{why}")
+        mark = "-" if not given else "yes" if given == ours else "no"
+        right += mark == "yes"
+        print(f"{mark:<3} {i}. ours: {ours:<19} {'' if given in ('', ours) else f'(yours: {given}) '}{why}")
     print(f"\n{right} of {len(SITUATIONS)} as ours." + ("" if right == len(SITUATIONS) else
           " A different answer can be defended: say what it would cost or risk in that situation."))
     return right
@@ -403,7 +403,7 @@ COMMS_PROMPT_LINE = ("\nFor request_info, also ask customer comms for the letter
 
 
 def comms_tool(letters=None) -> BaseTool:
-    """Stretch (b): customer comms as a third specialist, Block 4's letter loop (write, check, revise). It drafts;
+    """Stretch (b): customer comms as a third specialist, the letter loop from notebook 04 (write, check, revise). It drafts;
     sending stays with code and a person."""
     from ..data import load_package
     loop = letters or block4.build_letter_loop()
@@ -445,7 +445,7 @@ def read_document(package_id: str, name: str) -> str:
 
 
 PRODUCTS = ("building", "household", "motor")
-_CHECKLIST = block2.PLAN_PROMPT.split("\n", 1)[1]   # the Block 2 checklist without its first line
+_CHECKLIST = block2.PLAN_PROMPT.split("\n", 1)[1]   # the checklist from notebook 02 without its first line
 HANDLER_PROMPT = ("You are Lakeside Insurance AG's claims handler for {product} insurance. The team's supervisor gives you "
                   "one part of a claim package: the package id, the policy, what was damaged and the file names of the "
                   "documents that belong to this part. Read those documents with read_document, then decide this part "
@@ -459,7 +459,7 @@ HANDLER_DESCRIPTION = ("Ask Lakeside's {product} claims handler to decide the pa
 
 
 def handler(product: str, llm=None):
-    """One claims handler per product line: the Block 2 tools, read_document, and the checklist for one policy."""
+    """One claims handler per product line: the tools from notebook 02, read_document, and the checklist for one policy."""
     return create_agent(llm or get_model(), block2.FINAL_TOOLS + [read_document],
                         system_prompt=HANDLER_PROMPT.format(product=product), name=f"{product}_handler")
 
@@ -532,7 +532,7 @@ class Parts(BaseModel):
 
 
 def pipeline_per_part(pipeline=None, llm=None):
-    """Recorded row of Block 5, Part E: one extraction call lists the parts, then Block 4's pipeline decides each part
+    """Recorded row of notebook 05, Part E: one extraction call lists the parts, then the pipeline from notebook 04 decides each part
     from the e-mail and that part's documents."""
     def run(pkg: Package) -> PolicyDecisions:
         from ..data import Package as P
@@ -617,8 +617,8 @@ def several_board(system, label: str = "run", ids: list[str] | None = None, conc
     SEVERAL_RUNS[label] = parts
     if show:
         s = summary
-        print(f"SEVERAL POLICIES — {label}: {s['packages_correct']} of {s['packages']} packages and {s['policies_correct']} of "
-              f"{s['policies']} policy decisions correct · unsafe approvals {s['unsafe_approvals']} · {s['llm_calls_per_pkg']} "
+        print(f"SEVERAL POLICIES: {label}: {s['packages_correct']} of {s['packages']} packages and {s['policies_correct']} of "
+              f"{s['policies']} policy decisions correct, unsafe approvals {s['unsafe_approvals']}, {s['llm_calls_per_pkg']} "
               f"model calls, ${s['cost_usd_per_pkg']:.4f} and {s['seconds_per_pkg']} s per package")
         cols = ["package", "policy", "product", "category", "expected", "predicted", "correct", "payout_ok", "unsafe_approval", "error"]
         try:
@@ -646,9 +646,9 @@ def watch_split(team, pkg: Package, plot: bool = True) -> dict:
         reads = [tc["args"].get("name") for m in q["messages"] for tc in (getattr(m, "tool_calls", None) or [])
                  if tc["name"] == "read_document"]
         looks = [tc["name"] for m in q["messages"] for tc in (getattr(m, "tool_calls", None) or []) if tc["name"] != "read_document"]
-        print(f"  → {q['agent'].replace('_', ' '):<17} {_short(q['question'], 140)}")
+        print(f"  to {q['agent'].replace('_', ' '):<17} {_short(q['question'], 140)}")
         print(f"      reads {', '.join(reads) or 'no document'}; looks up {', '.join(looks) or 'nothing'}")
-        print(f"    ← answers after {q['end'] - q['start']:.0f} s: {_short(q['messages'][-1].text, 200)}")
+        print(f"    answers after {q['end'] - q['start']:.0f} s: {_short(q['messages'][-1].text, 200)}")
     ds = result.get("structured_response")
     for d in (ds.decisions if ds else []):
         print(f"supervisor          {d.policy_id}: {d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else ""))
@@ -665,9 +665,9 @@ def watch_split(team, pkg: Package, plot: bool = True) -> dict:
     for name, messages, tools, prompt in runs:
         calls, tokens = _sent(messages)
         calls_all, tokens_all = calls_all + calls, tokens_all + tokens
-        print(f"  {name.replace('_', ' '):<18} {calls} calls · {tokens:>6,} input tokens")
+        print(f"  {name.replace('_', ' '):<18} {calls} calls, {tokens:>6,} input tokens")
         contexts[name.replace("_", " ")] = _parts(messages, tools, prompt)
-    print(f"  {'team':<18} {calls_all} calls · {tokens_all:>6,} input tokens")
+    print(f"  {'team':<18} {calls_all} calls, {tokens_all:>6,} input tokens")
     contexts["one agent (estimate)"] = {
         "system prompt": _tokens(block2.PLAN_PROMPT + SEVERAL_POLICIES), "tool definitions": _definitions(block2.FINAL_TOOLS),
         "claim package or question": _tokens(pkg.text()),
@@ -697,9 +697,9 @@ def storm_claim_versus_recorded(result: dict | None = None):
         for r in scored:
             due = pay[r["policy"]]
             payout = "" if not due else (f"   payout CHF {r['predicted_payout'] or 0:,.0f}, expected {due:,.0f} "
-                                         f"{'✔' if r['payout_ok'] else '✘'}")
+                                         f"{'yes' if r['payout_ok'] else 'no'}")
             print(f"{r['policy']} {r['category']:<16} expected {r['expected']:<15} yours {str(r['predicted']):<15} "
-                  f"{'✔' if r['correct'] else '✘'}{'  UNSAFE: paid' if r['unsafe_approval'] else ''}{payout}")
+                  f"{'yes' if r['correct'] else 'no '}{'  UNSAFE: paid' if r['unsafe_approval'] else ''}{payout}")
         rows.append({"design": "your team, today", "runs": 1, "storm claim (of 3)": str(sum(r["correct"] for r in scored)),
                      "storm payouts (of 2)": str(sum(r["payout_ok"] is True for r in scored)),
                      "all 3 claims (of 7)": "", "unsafe approvals": str(sum(r["unsafe_approval"] for r in scored)),
@@ -854,10 +854,10 @@ def smuggle(request: dict) -> str | None:
         r = LetterRequest.model_validate(request)
     except ValidationError as e:
         reasons = "; ".join(f"{'.'.join(str(x) for x in err['loc'])}: {err['msg']}" for err in e.errors())
-        print(f"✘ refused before any agent sees it: {reasons}")
+        print(f"No: refused before any agent sees it: {reasons}")
         return None
     question = f"Package {r.package_id}: ask the policyholder for: {', '.join(r.missing_items)}."
-    print(f"✔ accepted. The correspondence agent receives exactly this, and nothing else from the package:\n  {question}")
+    print(f"Yes: accepted. The correspondence agent receives exactly this, and nothing else from the package:\n  {question}")
     if INJECTION_ADDRESS in question:
         print("  The address got through.")
     return question
@@ -882,7 +882,7 @@ def _cards() -> dict:
         "handler": ("Handler (one each for building, household and motor)", HANDLER_PROMPT, names(handler_tools),
                     'create_agent(model, block2.FINAL_TOOLS + [block5.read_document],\n'
                     '             system_prompt=block5.HANDLER_PROMPT.format(product="motor"), name="motor_handler")'),
-        "reader": ("Reader (decides, cannot send)", "The Block 2 checklist (block2.PLAN_PROMPT), plus:" + SEPARATED_LINE,
+        "reader": ("Reader (decides, cannot send)", "The checklist from notebook 02 (block2.PLAN_PROMPT), plus:" + SEPARATED_LINE,
                    names(block2.FINAL_TOOLS) + ", `ask_correspondence`",
                    "create_agent(model, block2.FINAL_TOOLS + [block5.correspondence_tool()],\n"
                    "             system_prompt=block2.PLAN_PROMPT + block5.SEPARATED_LINE, response_format=cl.ClaimDecision)"),
@@ -900,7 +900,7 @@ def agent_card(*keys: str) -> str:
     parts = []
     for k in keys:
         title, prompt, tools, build = cards[k]
-        card = f"**{title}** · tools: {tools}\n\n```text\n{prompt.strip()}\n```"
+        card = f"**{title}**, tools: {tools}\n\n```text\n{prompt.strip()}\n```"
         parts.append(card + (f"\n\nBuilt in `claims_lab.reference.block5` as:\n\n```python\n{build}\n```" if build else ""))
     label = ", ".join(cards[k][0].split(" (")[0].lower() for k in keys)
     return (f"<details><summary><b>What the agents are</b>: {label}, their tools and prompts (click to open)</summary>\n\n"

@@ -55,7 +55,7 @@ def plot_history(df, reference=None) -> None:
     ax.set_ylim(0, 1.08)
     ax.set_xlim(left=0)
     title = "Each design: accuracy against cost (magenta: paid claims it should not have)"
-    ax.set_title(title + ("\nfilled: your runs today · hollow squares: our runs, averaged per design" if reference is not None else ""))
+    ax.set_title(title + ("\nfilled: your runs today; hollow squares: our runs, averaged per design" if reference is not None else ""))
     ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
     show(plt.gcf())

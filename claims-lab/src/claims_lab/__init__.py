@@ -1,4 +1,4 @@
-"""claims_lab — helper package for the HSLU module 'AI Agents and Controlled Workflows'.
+"""claims_lab: helper package for the HSLU module 'AI Agents and Controlled Workflows'.
 
 All data is synthetic and describes the fictional Lakeside Insurance AG.
 

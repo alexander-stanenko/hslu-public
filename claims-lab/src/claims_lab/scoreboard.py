@@ -2,8 +2,8 @@
 
     from claims_lab import scoreboard
     def my_system(package) -> ClaimDecision: ...
-    scoreboard(my_system, label="Block 2 - better tools")          # sync systems
-    await ascoreboard(my_async_system, label="Block 3 - via MCP")  # async systems (e.g. MCP tools)
+    scoreboard(my_system, label="better tools")                    # sync systems
+    await ascoreboard(my_async_system, label="via MCP")            # async systems (e.g. MCP tools)
 """
 from __future__ import annotations
 
@@ -123,8 +123,8 @@ def _summarise(rows: list[dict], label: str, seconds: float) -> dict:
                 to_person_expected=int((ran["expected"] == "refer_adjuster").sum()))
 
 
-LEGEND = ("correct: same decision as the experienced clerk · payout_ok: right amount (claims to pay only) · "
-          "unsafe_approval: paid although it should not have been · issues_found: share of the expected issues the decision names")
+LEGEND = ("correct: same decision as the experienced clerk; payout_ok: right amount (claims to pay only); "
+          "unsafe_approval: paid although it should not have been; issues_found: share of the expected issues the decision names")
 RETRYABLE = ("429", "rate limit", "ratelimit", "timeout", "timed out", "temporarily", "overloaded", "connection")
 
 
@@ -138,17 +138,17 @@ def _report(rows, summary, show: bool):
     RUNS[summary["label"]] = df
     if show:
         s = summary
-        print(f"SCOREBOARD — {s['label']}  ({s['n']} claims)" + ("  · replayed: calls and cost as recorded in the live run" if s["replayed"] else ""))
+        print(f"SCOREBOARD: {s['label']}  ({s['n']} claims)" + (". Replayed: calls and cost as recorded in the live run" if s["replayed"] else ""))
         if s["errors"]:
-            print(f"  ⚠ {s['errors']} of {s['n']} claims failed (see the error column), probably the rate limit. They are left out of "
+            print(f"  Warning: {s['errors']} of {s['n']} claims failed (see the error column), probably the rate limit. They are left out of "
                   f"the accuracy. Wait 30 seconds and run the cell again.")
         pay_n = s.get("payouts_checked")
-        print(f"  decision accuracy {s['accuracy']:.0%} · payout accuracy {s['payout_accuracy'] if s['payout_accuracy'] is None else format(s['payout_accuracy'], '.0%')}"
+        print(f"  decision accuracy {s['accuracy']:.0%}, payout accuracy {s['payout_accuracy'] if s['payout_accuracy'] is None else format(s['payout_accuracy'], '.0%')}"
               + (f" (of {pay_n} claim{'s' if pay_n != 1 else ''} to pay)" if pay_n else "")
-              + f" · unsafe approvals {s['unsafe_approvals']} · issues found {s['issue_recall'] if s['issue_recall'] is None else format(s['issue_recall'], '.0%')}")
-        print(f"  {s['llm_calls_per_pkg']} model calls per claim · ${s['cost_usd_per_pkg']:.4f} per claim "
-              f"(about ${s['cost_usd_per_pkg'] * 10000:,.0f} per 10,000 claims, model calls only) · {s['seconds_per_pkg']} s per claim"
-              + (f" · {s['errors']} errors" if s["errors"] else ""))
+              + f", unsafe approvals {s['unsafe_approvals']}, issues found {s['issue_recall'] if s['issue_recall'] is None else format(s['issue_recall'], '.0%')}")
+        print(f"  {s['llm_calls_per_pkg']} model calls per claim, ${s['cost_usd_per_pkg']:.4f} per claim "
+              f"(about ${s['cost_usd_per_pkg'] * 10000:,.0f} per 10,000 claims, model calls only), {s['seconds_per_pkg']} s per claim"
+              + (f", {s['errors']} errors" if s["errors"] else ""))
         print(f"  sent to a person (refer_adjuster): {s['to_person']} of {s['n'] - s['errors']} claims, "
               f"{s['to_person_expected']} expected")
         try:
@@ -240,7 +240,7 @@ def spot_check(system, *package_ids: str) -> None:
         except Exception as e:  # show the problem, keep going
             got, why = "ERROR", f"{type(e).__name__}: {e}"
         expected = next(l for l in labels() if l["package_id"] == pid)["expected"]["decision"]
-        print(f"{'✔' if got == expected else '✘'} {pid}: {got:<15} (expected {expected:<15}) {why[:110]}")
+        print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {why[:110]}")
 
 
 async def aspot_check(system, *package_ids: str) -> None:
@@ -252,7 +252,7 @@ async def aspot_check(system, *package_ids: str) -> None:
         except Exception as e:  # show the problem, keep going
             got, why = "ERROR", f"{type(e).__name__}: {e}"
         expected = next(l for l in labels() if l["package_id"] == pid)["expected"]["decision"]
-        print(f"{'✔' if got == expected else '✘'} {pid}: {got:<15} (expected {expected:<15}) {why[:110]}")
+        print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {why[:110]}")
 
 
 def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B")) -> pd.DataFrame:

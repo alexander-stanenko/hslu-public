@@ -100,7 +100,7 @@ def test_watch_prints_each_step_and_its_kind(offline, capsys):
 
 def test_screen_test_and_judgement_agent_run(offline):
     df = B.test_screen(B.make_screen("Is anything unusual?"))
-    assert list(df["claim"]) == list(B.SCREEN_TESTS) and set(df["as expected"]) <= {"✔", "✘"}
+    assert list(df["claim"]) == list(B.SCREEN_TESTS) and set(df["as expected"]) <= {"yes", "no"}
     result = B.run_judgement_agent(B.judgement_agent(judgement_rules=""), cl.load_package("PKG-023"), ["seepage"])
     assert result["structured_response"].decision in ("fast_track", "request_info", "refer_adjuster", "decline")
 
@@ -133,7 +133,7 @@ def test_unfinished_route_and_graph_fall_back_to_the_reference(offline, capsys):
         ...
     assert B.test_route(unfinished) is B.route
     out = capsys.readouterr().out
-    assert "not finished" in out and "a clean claim        → fast_track      ✔" in out
+    assert "not finished" in out and "a clean claim        goes to fast_track      yes" in out
     assert B.test_route(B.route) is B.route and "not finished" not in capsys.readouterr().out
 
     def fresh():  # the six steps but no edges, as the exercise cell is before the TODO is done
@@ -149,7 +149,7 @@ def test_unfinished_route_and_graph_fall_back_to_the_reference(offline, capsys):
     g.add_edge("__start__", "extract_facts")
     B.check_graph(g)
     out = capsys.readouterr().out
-    assert "missing edge: START → screen" in out and "missing edge: rule_checks → fast_track" in out
+    assert "missing edge from START to screen" in out and "missing edge from rule_checks to fast_track" in out
 
 
 def test_empty_instructions_fall_back_to_lakesides(capsys):

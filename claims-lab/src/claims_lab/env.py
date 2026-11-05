@@ -81,7 +81,7 @@ class _RetryNotice(logging.Handler):
         if "Retrying request" not in record.getMessage() or time.time() - self._last < 20:
             return
         self._last = time.time()
-        print("  ⏳ The provider asked us to wait (the shared rate limit, or a busy server). The request is retried "
+        print("  Waiting. The provider asked us to wait (the shared rate limit, or a busy server). The request is retried "
               "automatically: let the cell run.", flush=True)
 
 
@@ -108,7 +108,7 @@ def _azure_settings(defaults: dict) -> bool:
         os.environ["AZURE_OPENAI_ENDPOINT"] = url
         if src == "Colab Secrets":
             _FROM_COLAB["AZURE_OPENAI_ENDPOINT"] = url
-    print(f"  {'✔' if src else '✘'} Azure endpoint from {src or 'NOWHERE — add the secret AZURE_OPENAI_ENDPOINT'}, "
+    print(f"  {'ok' if src else 'MISSING'} Azure endpoint from {src or 'NOWHERE: add the secret AZURE_OPENAI_ENDPOINT'}, "
           f"deployment {os.environ['AZURE_OPENAI_CHAT_DEPLOYMENT']}")
     return bool(src)
 
@@ -165,10 +165,10 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
     print("claims_lab setup")
     if p == "offline":
         src = "not needed"
-        print("  ✔ provider offline: scripted stand-in model, no API calls, answers are NOT from a real LLM")
+        print("  ok provider offline: scripted stand-in model, no API calls, answers are NOT from a real LLM")
     else:
         src = _load_key(KEY_NAMES[p])
-        print(f"  {'✔' if src else '✘'} provider {p}, API key from {src or 'NOWHERE — add it to Colab Secrets'}")
+        print(f"  {'ok' if src else 'MISSING'} provider {p}, API key from {src or 'NOWHERE: add it to Colab Secrets'}")
     ok &= bool(src)
     if p == "azure_openai":
         ok &= _azure_settings(models.COURSE_AZURE)
@@ -178,30 +178,30 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
         except PackageNotFoundError:
             have = "missing"
         if have != want:
-            print(f"  ⚠ {pkg} {have} (course tested with {want})")
-    print(f"  ✔ data: {len(list_packages('dev'))} dev + {len(list_packages('heldout'))} held-out claim packages, {len(labels())} labels")
+            print(f"  Note: {pkg} {have} (course tested with {want})")
+    print(f"  ok data: {len(list_packages('dev'))} dev + {len(list_packages('heldout'))} held-out claim packages, {len(labels())} labels")
     if ping and ok:
         try:
             t0 = time.time()
             m = models.get_model()
             m.invoke("Reply with OK.")
             name = getattr(m, "model", None) or getattr(m, "deployment_name", None) or getattr(m, "model_name", "?")
-            print(f"  ✔ model {name} answers ({time.time() - t0:.1f}s)")
+            print(f"  ok model {name} answers ({time.time() - t0:.1f}s)")
         except Exception as e:
             ok = False
             msg = str(e)
             if "credit balance" in msg.lower() or "quota" in msg.lower():
-                hint = "the API account has no credit/quota left — tell the instructor"
+                hint = "the API account has no credit/quota left: tell the instructor"
             elif "401" in msg or "auth" in msg.lower():
                 hint = "check the API key"
             elif "429" in msg:
-                hint = "rate limit — wait 30 s and re-run"
+                hint = "rate limit: wait 30 s and re-run"
             else:
                 hint = "see the error"
-            print(f"  ✘ model call failed ({type(e).__name__}): {hint}\n    {msg[:200]}")
+            print(f"  FAILED model call ({type(e).__name__}): {hint}\n    {msg[:200]}")
     try:
         from .style import use_hslu_style
         use_hslu_style()
     except Exception:
         pass
-    print("  ready ✔" if ok else "  NOT ready — fix the ✘ items above")
+    print("  ready: yes" if ok else "  NOT ready: fix the items marked MISSING or FAILED above")

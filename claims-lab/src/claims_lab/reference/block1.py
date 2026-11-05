@@ -1,4 +1,4 @@
-"""Block 1 reference: the same claim handled by a chatbot, a workflow and an agent loop.
+"""Reference for notebook 01: the same claim handled by a chatbot, a workflow and an agent loop.
 
 All three return a ClaimDecision, so they can be compared on the scoreboard:
 
@@ -76,7 +76,7 @@ def check_duplicate_invoice(facts: ClaimFacts, policy: dict) -> ClaimDecision | 
 
 
 def workflow(pkg: Package, llm=None, extra_checks=(check_duplicate_invoice,)) -> ClaimDecision:
-    """Part of the clerk's cheat sheet written as code: extract → policy → active? → covered? → extra checks → pay.
+    """Part of the clerk's cheat sheet written as code: extract, policy, active?, covered?, extra checks, pay.
 
     extra_checks: functions (facts, policy) -> ClaimDecision | None, run after the coverage check (cheat-sheet question 5).
     """

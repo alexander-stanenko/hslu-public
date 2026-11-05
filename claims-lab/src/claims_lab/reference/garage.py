@@ -264,7 +264,7 @@ def show(result: dict) -> None:
           f"{result['false alarms']} false alarms; {result['llm_calls']} model calls, ${result['cost_usd']:.3f}, "
           f"{result['seconds']:.0f} s; read {result['invoices_read']} invoices, {result['searches']} searches")
     for f in result["report"].findings:
-        print(f"  {f.invoice_id:<8} {'✔' if f.invoice_id.strip().upper() in TRUTH else '✘'}  {f.reason[:120]}")
+        print(f"  {f.invoice_id:<8} {'yes' if f.invoice_id.strip().upper() in TRUTH else 'no '}  {f.reason[:120]}")
     if result["missed"]:
         print("  missed: " + ", ".join(f"{i} ({TRUTH[i]})" for i in result["missed"]))
 

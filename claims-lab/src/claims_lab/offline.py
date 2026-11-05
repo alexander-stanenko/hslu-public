@@ -101,10 +101,10 @@ def _fill(schema: dict, text: str, defs: dict | None = None, messages: list[Base
     defs = defs or schema.get("$defs", {})
     if "$ref" in schema:
         return _fill(defs[schema["$ref"].split("/")[-1]], text, defs, messages)
-    if schema.get("title") == "PolicyDecisions" or set(schema.get("properties", {})) == {"decisions"}:  # one decision per policy number in the text (Block 5, Part E)
+    if schema.get("title") == "PolicyDecisions" or set(schema.get("properties", {})) == {"decisions"}:  # one decision per policy number in the text (notebook 05, Part E)
         ids = list(dict.fromkeys(re.findall(r"\b(P-\d{5})\b", text)))
         return {"decisions": [dict(_decision(text, messages), policy_id=pid) for pid in ids]}
-    if set(schema.get("properties", {})) == {"parts"}:  # the parts of a package, one per policy (Block 5, Part E)
+    if set(schema.get("properties", {})) == {"parts"}:  # the parts of a package, one per policy (notebook 05, Part E)
         docs = [n for n in re.findall(r"^=== (.+?) ===", text, re.M)]
         return {"parts": [{"policy_id": pid, "what": "offline", "documents": docs}
                           for pid in dict.fromkeys(re.findall(r"\b(P-\d{5})\b", text))]}
@@ -146,7 +146,7 @@ def _course_tool_args(name: str, f: dict) -> dict | None:
 
 
 def _question(spec: dict, f: dict) -> dict | None:
-    """Arguments for a specialist wrapped as a tool (ask_..., one text argument, Block 5): the claim's facts written
+    """Arguments for a specialist wrapped as a tool (ask_..., one text argument, notebook 05): the claim's facts written
     out, so that the specialist, which does not see the package, can find them again."""
     props, required = spec["parameters"].get("properties", {}), spec["parameters"].get("required", [])
     if not spec["name"].startswith("ask_") or len(required) != 1 or props.get(required[0], {}).get("type") != "string":

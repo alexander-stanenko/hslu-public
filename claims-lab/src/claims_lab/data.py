@@ -37,8 +37,8 @@ class Package:
 
 
 def list_packages(split: str = "dev") -> list[str]:
-    """Package IDs of a split: 'dev' (28, for exercises), 'heldout' (12, the final check in Block 6), 'demo', 'all' (these 41), or
-    'complex' (3 packages that concern several policies, Block 5)."""
+    """Package IDs of a split: 'dev' (28, for exercises), 'heldout' (12, the final check in notebook 06), 'demo', 'all' (these 41), or
+    'complex' (3 packages that concern several policies, notebook 05)."""
     if split == "complex":
         return [l["package_id"] for l in complex_labels()]
     return [l["package_id"] for l in labels() if split == "all" or l["split"] == split]

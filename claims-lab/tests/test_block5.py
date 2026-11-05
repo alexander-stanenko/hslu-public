@@ -73,7 +73,7 @@ def test_unfinished_wrapper_falls_back_and_a_good_one_is_checked_without_a_model
     before = costs.SESSION_METER.started
     assert B.check_ask_tool(ask_red_flag_checker, red_flags) is ask_red_flag_checker
     assert costs.SESSION_METER.started == before  # the check reads the wrapper, it does not run it
-    assert "✔" in capsys.readouterr().out
+    assert "Yes:" in capsys.readouterr().out
     assert ask_red_flag_checker.invoke({"question": "invoice GH-3318 on policy P-10025?"}).strip()
 
 
@@ -136,7 +136,7 @@ def test_pattern_check_marks_answers_accepts_aliases_and_makes_no_model_call(cap
     assert "4 of 4" in capsys.readouterr().out
     assert B.check_patterns({1: "one agent"}) == 0
     out = capsys.readouterr().out
-    assert "✘ 1." in out and "(yours: one agent)" in out and "· 2." in out and "can be defended" in out
+    assert "no  1." in out and "(yours: one agent)" in out and "-   2." in out and "can be defended" in out
     assert {ours for _, ours, _ in B.SITUATIONS} == set(B.PATTERNS)
 
 

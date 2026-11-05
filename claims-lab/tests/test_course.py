@@ -42,9 +42,9 @@ def test_picks_are_saved_merged_and_shown_with_evidence(capsys):
     cl.save_picks({"Not covered": ("workflow", "a fixed rule")})
     df = course.picks_table(4).set_index("kind of claim")
     assert df.loc["Suspicious", "your pick"] == "agent" and df.loc["Not covered", "your pick"] == "workflow"
-    assert "B1:" in df.loc["Suspicious", "what the measurements say so far"]
-    assert "B4:" in df.loc["Suspicious", "what the measurements say so far"]
-    assert "B4:" not in course.picks_table(2).set_index("kind of claim").loc["Suspicious", "what the measurements say so far"]
+    assert "notebook 01:" in df.loc["Suspicious", "what the measurements say so far"]
+    assert "notebook 04:" in df.loc["Suspicious", "what the measurements say so far"]
+    assert "notebook 04:" not in course.picks_table(2).set_index("kind of claim").loc["Suspicious", "what the measurements say so far"]
 
 
 def test_show_picks_without_saved_picks_explains_why(capsys):

@@ -1,4 +1,4 @@
-"""Block 4 reference: the hybrid claims pipeline and the evaluator-optimizer loop for the customer letter.
+"""Reference for notebook 04: the hybrid claims pipeline and the evaluator-optimizer loop for the customer letter.
 
 Code checks the rules of the clerk's cheat sheet, a model reads the documents and handles the cases that need
 judgement, and every referred claim goes to a person (an adjuster).
@@ -6,15 +6,15 @@ judgement, and every referred claim goes to a person (an adjuster).
     from claims_lab.reference import block4
     app = block4.build_pipeline()
     state = block4.watch(app, cl.load_package("PKG-015"))   # what each step did, and the path on the graph
-    cl.scoreboard(block4.system(app), label="Block 4 hybrid")
-    letters = block4.build_letter_loop()              # Part E: write → check → revise, at most 3 rounds
+    cl.scoreboard(block4.system(app), label="hybrid pipeline")
+    letters = block4.build_letter_loop()              # Part E: write, check, revise, at most 3 rounds
     app = block4.build_pipeline(approval_step=True)  # stretch: a person confirms every payout before it happens
 
 The exercise cells of notebook 04 are checked with test_route, check_graph, filled_in and test_checker: an unfinished
 answer is replaced by the reference with a message, so the cells after an exercise still run.
 
 The rule checks and the agent call Lakeside's look-up functions (claims_lab.tools) directly. They are the same functions
-that the MCP servers of Block 3 wrap; over MCP every call would start a server process, and MCP decides who can use the
+that the MCP servers of notebook 03 wrap; over MCP every call would start a server process, and MCP decides who can use the
 tools, not how the pipeline decides.
 """
 from __future__ import annotations
@@ -105,9 +105,9 @@ def test_screen(screen_fn, ids: list[str] | None = None) -> pd.DataFrame:
             (label(pid)["category"] in ("ambiguous",), label(pid)["explanation"][:40])
         j = screen_fn({"package": load_package(pid)})["judgement"]
         rows.append({"claim": pid, "what it is": what, "should be flagged": should, "flagged": j.needs_judgement,
-                     "as expected": "✔" if j.needs_judgement == should else "✘", "signs": "; ".join(j.signs)[:120]})
+                     "as expected": "yes" if j.needs_judgement == should else "no", "signs": "; ".join(j.signs)[:120]})
     df = pd.DataFrame(rows)
-    print(f"{(df['as expected'] == '✔').sum()} of {len(df)} claims as expected")
+    print(f"{(df['as expected'] == 'yes').sum()} of {len(df)} claims as expected")
     return df
 
 
@@ -169,7 +169,7 @@ def rule_checks(state: ClaimState) -> dict:
         flags.append(("frequency", f"{len(recent) + 1} claims on this policy within 12 months, including this one."))
     if f.repair_type and f.amount_chf and "error" not in (price := T.get_price_range(f.repair_type)) \
             and f.amount_chf > 1.5 * price["typical_max_chf"]:
-        flags.append(("amount_above_typical", f"CHF {f.amount_chf:,.0f} is more than 1.5 × the typical maximum of "
+        flags.append(("amount_above_typical", f"CHF {f.amount_chf:,.0f} is more than 1.5 times the typical maximum of "
                                               f"CHF {price['typical_max_chf']:,.0f} for {f.repair_type}."))
     if f.claim_type in ("hail", "storm") and f.incident_date and not any(
             e["event"] == f.claim_type for e in T.check_weather(policy["postcode"], f.incident_date)):
@@ -218,7 +218,7 @@ def test_route(route_fn):
             break
     for name, findings, needs, expected in cases:
         way = route_fn({"findings": findings, "judgement": Judgement(needs_judgement=needs)})
-        print(f"{name:<20} → {way:<15} {'✔' if way == expected else '✘ expected ' + expected}")
+        print(f"{name:<20} goes to {way:<15} {'yes' if way == expected else 'no, expected ' + expected}")
     return route_fn
 
 
@@ -248,11 +248,11 @@ def check_graph(g: StateGraph, route_fn=route):
         return ref.compile()
     missing, extra = _edges(build_pipeline(route_fn)) - _edges(app), _edges(app) - _edges(build_pipeline(route_fn))
     if not missing and not extra:
-        print("✔ Your graph has the same edges as the reference pipeline.")
+        print("Yes: your graph has the same edges as the reference pipeline.")
     for a, b in sorted(missing):
-        print(f"✘ missing edge: {a} → {b}")
+        print(f"No: missing edge from {a} to {b}")
     for a, b in sorted(extra):
-        print(f"✘ edge not in the reference: {a} → {b}")
+        print(f"No: edge not in the reference, from {a} to {b}")
     return app
 
 
@@ -523,8 +523,8 @@ def test_checker(check_fn, after_fn, decision: ClaimDecision):
         check_fn = check_letter
         verdict = check_fn({"letter": BAD_LETTER, "decision": decision})
     print(f"passes: {verdict['passes']}\nproblems:", *[f"  - {p}" for p in verdict["problems"]] or ["  none"], sep="\n")
-    print("✘ The checker passed the bad letter. Which rules does the letter break?" if verdict["passes"]
-          else "✔ The bad letter fails, as it should.")
+    print("No: the checker passed the bad letter. Which rules does the letter break?" if verdict["passes"]
+          else "Yes: the bad letter fails, as it should.")
     cases = [({"passes": True, "rounds": 1}, END), ({"passes": False, "rounds": 1}, "write_letter"),
              ({"passes": False, "rounds": MAX_ROUNDS}, END)]
     try:

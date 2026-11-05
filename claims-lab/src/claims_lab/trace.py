@@ -9,7 +9,7 @@ from .costs import CACHED_FLAG, price_for
 def _short(x, n: int) -> str:
     s = x if isinstance(x, str) else json.dumps(x, ensure_ascii=False, default=str)
     s = " ".join(s.split())
-    return s if len(s) <= n else s[: n - 1] + "…"
+    return s if len(s) <= n else s[: n - 3] + "..."
 
 
 def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
@@ -48,14 +48,14 @@ def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
                 print(f"AI  #{step:<3} (thinks) {_short(m.text, max_chars)}")
             for tc in m.tool_calls:
                 args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
-                print(f"AI  #{step:<3} → calls {tc['name']}({_short(args, max_chars)})")
+                print(f"AI  #{step:<3} calls {tc['name']}({_short(args, max_chars)})")
             if not m.tool_calls:
                 print(f"AI  #{step:<3} ANSWER {_short(m.text, max_chars * 2)}")
         elif kind == "tool":
             status = " (ERROR)" if getattr(m, "status", "") == "error" else ""
             name = m.name or call_names.get(getattr(m, "tool_call_id", None), "?")
-            print(f"TOOL     {name}{status} → {_short(m.content if isinstance(m.content, str) else m.text, max_chars)}")
-    print(f"—— {calls} LLM calls · {tin:,} in / {tout:,} out tokens · ${cost:.4f}"
+            print(f"TOOL     {name}{status}: {_short(m.content if isinstance(m.content, str) else m.text, max_chars)}")
+    print(f"Total: {calls} LLM calls, {tin:,} in / {tout:,} out tokens, ${cost:.4f}"
           + (f" ({'all' if replayed == calls else replayed} replayed from the recording: free now, cost as recorded)"
              if replayed else ""))
     if chart and any(i for i, _ in per_call):
@@ -96,9 +96,9 @@ def context_breakdown(result, tools=None, system_prompt: str | None = None, plot
         elif m.type == "ai":
             parts["model's own steps"] += _tokens(text) + _tokens(json.dumps(m.tool_calls, default=str))
     total = sum(parts.values()) or 1
-    print(f"Context of the last request ≈ {total:,} tokens (estimated)")
+    print(f"Context of the last request: about {total:,} tokens (estimated)")
     for name, n in parts.items():
-        print(f"  {name:<22} {n:>7,}  {n / total:>4.0%}  {'█' * round(30 * n / total)}")
+        print(f"  {name:<22} {n:>7,}  {n / total:>4.0%}  {'#' * round(30 * n / total)}")
     ais = [m for m in messages if m.type == "ai"]
     sent = sum((m.usage_metadata or {}).get("input_tokens", 0) for m in ais)
     if sent:
@@ -133,18 +133,18 @@ def show_graph(app, highlight: list[str] | None = None, kinds: dict | None = Non
     if visited:
         extra.append(f"\tclass {','.join(visited)} visited")
     text = text.rstrip() + "\n" + "\n".join(extra) + "\n"
-    legend = ("Blue: a model call · white: code · pink: a person" if kinds else "") + (" · thick border: the path of this claim" if visited else "")
+    legend = ("Blue: a model call; white: code; pink: a person" if kinds else "") + ("; thick border: the path of this claim" if visited else "")
     if provider() != "offline" and not os.environ.get("CLAIMS_LAB_NONINTERACTIVE"):
         try:
             from IPython.display import Image, display
             display(Image(draw_mermaid_png(text, max_retries=2)))  # rendered by the mermaid.ink web service
             if legend:
-                print(legend.strip(" ·"))
+                print(legend.strip(" ;"))
             return
         except Exception:  # no network, or the service is busy: draw it locally
             _draw_locally(app, kinds, visited)
             if legend:
-                print(legend.strip(" ·"))
+                print(legend.strip(" ;"))
             return
     print(text)
 

@@ -1,4 +1,4 @@
-"""Block 3 reference: a server of your own, the checklist agent over MCP, elicitation, and the bridge (stretch).
+"""Reference for notebook 03: a server of your own, the checklist agent over MCP, elicitation, and the bridge (stretch).
 
     from claims_lab.reference import block3
     block3.write_server()                                   # catch-up for Part A: writes lakeside_server.py

@@ -52,7 +52,7 @@ def test_colab_secrets_choose_azure_with_course_settings(clean_env, monkeypatch,
     for name, value in models.COURSE_AZURE.items():
         assert os.environ[name] == value
     assert "API key from Colab Secrets" in out and "Azure endpoint from Colab Secrets" in out
-    assert "ready ✔" in out and "NOT ready" not in out
+    assert "ready: yes" in out and "NOT ready" not in out
     setup(ping=False)  # running the cell again (every notebook starts with setup)
     assert capsys.readouterr().out.count("from Colab Secrets") == 2
 

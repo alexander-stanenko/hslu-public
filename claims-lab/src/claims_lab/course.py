@@ -1,9 +1,9 @@
 """The thread of the day inside the notebooks: where we are, the result of a block, the picks table and figures.
 
-    cl.where_we_are(2)      # the six layers with Block 2 highlighted, the day's question, what Block 1 left open
+    cl.where_we_are(2)      # the six layers with notebook 02 highlighted, the day's question, what notebook 01 left open
     cl.result_card(2)       # this session's scoreboard runs next to our recorded runs, and what to tell your team
     cl.save_picks({...})    # notebook 01, Exercise D: your pick per kind of claim
-    cl.show_picks(4)        # your picks next to what the measurements of Blocks 1 to 4 say
+    cl.show_picks(4)        # your picks next to what the measurements of notebooks 01 to 04 say
     cl.figure("mcp_architecture")
 """
 from __future__ import annotations
@@ -14,8 +14,8 @@ from importlib.resources import files
 
 DAY_QUESTION = "What can we automate, and with which kind of system?"
 
-LAYERS = [("Chatbot, workflow, agent", "09:28"), ("Tools, instructions, context", "09:58"), ("MCP servers", "13:00"),
-          ("Orchestrated workflow", "14:00"), ("Multi-agent team", "14:20"), ("Results and takeaways", "16:12")]
+LAYERS = ["Chatbot, workflow or agent?", "Engineering an agent", "The Model Context Protocol",
+          "Workflow patterns and orchestration", "Multi-agent systems", "Results and takeaways"]
 
 BLOCKS = {
     0: {"question": "What is the problem?",
@@ -32,7 +32,7 @@ BLOCKS = {
                  "An agent chooses its own checks; it found the reused invoice, but without Lakeside's rules it usually "
                  "declined instead of referring, and we judged it on three claims by eye."]},
     2: {"question": "How do we make an agent decide reliably, and how do we know?",
-        "open": "From Block 1: the agent finds problems but does not know Lakeside's rules, its tools are untested, "
+        "open": "From notebook 01: the agent finds problems but does not know Lakeside's rules, its tools are untested, "
                 "and we judged it on three claims by eye.",
         "tell": ["We measure every design on the same labelled claims; one claim on eight is 12.5 points, so small "
                  "differences are noise.",
@@ -40,7 +40,7 @@ BLOCKS = {
                  "some claims it should not have.",
                  "Everything the agent knows is re-sent on every call, so long runs cost more and wander more."]},
     3: {"question": "How do other applications use the same tools?",
-        "open": "From Block 2: the agent works, but its tools live inside one notebook. A chat assistant for clerks "
+        "open": "From notebook 02: the agent works, but its tools live inside one notebook. A chat assistant for clerks "
                 "and other teams' agents need the same look-ups.",
         "tell": ["MCP lets one server offer Lakeside's look-ups to any application: our notebook, Claude Desktop, "
                  "another team's agent.",
@@ -49,7 +49,7 @@ BLOCKS = {
                  "A server's descriptions reach the model, so a server is trusted code: decide which tools may run "
                  "without asking a person."]},
     4: {"question": "Where do rules belong in code, and where does a model judge?",
-        "open": "From Block 3: the agent reaches its tools from anywhere, but it still pays some claims it should not "
+        "open": "From notebook 03: the agent reaches its tools from anywhere, but it still pays some claims it should not "
                 "(PKG-019: the tool said the policy does not cover glass, and the agent paid).",
         "tell": ["Put every rule that can be written down in code; in our eight runs no claim with a rule-detectable red "
                  "flag was paid.",
@@ -58,7 +58,7 @@ BLOCKS = {
                  "The pipeline made fewer model calls and cost about a third as much as the agent, and decided 7 to 8 of "
                  "the eight claims against the agent's 3 to 6."]},
     5: {"question": "When do several agents beat one?",
-        "open": "From Block 4: the pipeline decides most claims by rule, but every claim that needs judgement still goes "
+        "open": "From notebook 04: the pipeline decides most claims by rule, but every claim that needs judgement still goes "
                 "to one agent, which holds all the tools and the whole checklist.",
         "tell": ["A team splits one agent's work: only the supervisor reads the claim, and each specialist sees its "
                  "question and its own tools.",
@@ -70,22 +70,22 @@ BLOCKS = {
                  "decisions per run for both); the pipeline, split by policy in code where needed, stayed the most "
                  "accurate."]},
     6: {"question": "Which system for which kind of claim, and how sure are we?",
-        "open": "From Block 5: every design of the day is measured on the same claims. Which system for which kind of "
+        "open": "From notebook 05: every design of the day is measured on the same claims. Which system for which kind of "
                 "claim, and does the answer hold on claims nobody has seen?",
         "tell": ["Put every rule that can be written down in code. In our runs no rule paid a claim it should not have. "
                  "Over eight runs on the 8 quick-check claims the pipeline paid one claim it should not have, two in "
-                 "earlier test runs and one in five runs on the 12 held-out claims; those we traced came from a model "
+                 "earlier test runs and one in seven runs on the 12 held-out claims; those we traced came from a model "
                  "step, the judging agent or once the reading of the documents. Our labels follow the same guideline as its "
                  "rules, so this shows good reading, not that the rules are right.",
                  "Use a model where reading and judgement are needed, an agent only for the claims that need judgement, "
                  "and let a person decide every possible exclusion and every red flag; the agent's unsafe approvals "
-                 "rose from about 1.6 per run on the 8 claims to about 3.2 on the 12 held-out claims.",
+                 "rose from about 1.6 per run on the 8 claims to about 2.7 on the 12 held-out claims.",
                  "Several agents pay for what the split gives (separate permissions, work too large for one context), not "
                  "for checking rules; and every number today comes from a few labelled claims: a comparison, not proof."]},
 }
 
 # Our own runs on gpt-5.4-mini (default reasoning effort), one row per design, 8 quick-check claims unless n says
-# otherwise (planning/09 §9m, §9q, §9r, §9s). correct and unsafe are ranges from the worst run to the best; accuracy,
+# otherwise (planning/09 §9m, §9q, §9r, §9s, §9t). correct and unsafe are ranges from the worst run to the best; accuracy,
 # unsafe_approvals, calls and cost are averages over the runs. Every block lists the designs it compares.
 def _design(label, n, runs, correct, unsafe, accuracy, unsafe_approvals, calls, cost):
     return {"label": label, "n": n, "runs": runs, "correct": correct, "unsafe": unsafe, "accuracy": accuracy,
@@ -107,13 +107,13 @@ REFERENCE_RUNS = [
     {"block": 5, **_CHECKLIST}, {"block": 5, **_PIPELINE}, {"block": 5, **_TEAM},
     {"block": 6, **_BAD}, {"block": 6, **_FIXED}, {"block": 6, **_CHECKLIST}, {"block": 6, **_MCP},
     {"block": 6, **_PIPELINE}, {"block": 6, **_TEAM},
-    # Block 6: the three final designs on the 12 held-out claims (§9m, §9q, §9r, §9s).
-    {"block": 6, **_design("checklist agent, 12 held-out", 12, 5, "7 to 9", "2 to 4", 0.67, 3.2, 4.2, 0.0078)},
-    {"block": 6, **_design("hybrid pipeline, 12 held-out", 12, 5, "11 to 12", "0 to 1", 0.98, 0.2, 2.3, 0.0024)},
-    {"block": 6, **_design("claims team, 12 held-out", 12, 4, "9 to 12", "0 to 2", 0.83, 1.0, 7.6, 0.0113)},
+    # Notebook 06: the three final designs on the 12 held-out claims (§9m, §9q, §9r, §9s, §9t).
+    {"block": 6, **_design("checklist agent, 12 held-out", 12, 7, "7 to 9", "1 to 4", 0.69, 2.7, 4.2, 0.0078)},
+    {"block": 6, **_design("hybrid pipeline, 12 held-out", 12, 7, "11 to 12", "0 to 1", 0.99, 0.1, 2.3, 0.0025)},
+    {"block": 6, **_design("claims team, 12 held-out", 12, 5, "9 to 12", "0 to 2", 0.82, 1.0, 7.6, 0.0114)},
 ]
 
-# Block 5, after class: the 3 packages that concern several policies (7 policy decisions), gpt-5.4-mini, six of our
+# Notebook 05, after class: the 3 packages that concern several policies (7 policy decisions), gpt-5.4-mini, six of our
 # runs per design (planning/09 §9h, §9i, §9q, §9r, §9s). Ranges are from the worst to the best run; calls, cost and seconds
 # are averages per package. storm_claim: policies right on PKG-201 (of 3); storm_payouts: its two payouts right (of 2).
 SEVERAL_REFERENCE_RUNS = [
@@ -127,7 +127,7 @@ SEVERAL_REFERENCE_RUNS = [
      "cost_usd_per_pkg": 0.0142, "seconds_per_pkg": 7.9},
 ]
 
-# Block 5, after class: the garage review (reference/garage.py), 25 invoices of six garages, 8 planted problems,
+# Notebook 05, after class: the garage review (reference/garage.py), 25 invoices of six garages, 8 planted problems,
 # gpt-5.4-mini, our runs (planning/09 §9s for the last ones). Ranges are from the worst to the best run; cost and seconds are averages per run. The code
 # check finds the three reused parts at both garages without a model; with the workflow's findings it found all 8.
 GARAGE_REFERENCE_RUNS = [
@@ -216,7 +216,7 @@ EVIDENCE = {
                                         "agent and the product-line team each decided 4 to 6 right, with 1 to 3 "
                                         "unsafe approvals; the pipeline per part decided 6 to 7 right and approved "
                                         "nothing unsafe."},
-    # Block 6: which system for which kind of claim, one line per kind (slide 97).
+    # Notebook 06: which system for which kind of claim, one line per kind (slide 97).
     6: {"Routine and complete": "Answer: the pipeline. Code checks the rules and computes the payout; no agent needed.",
         "Incomplete": "Answer: a rule asks the customer (request_info), and the letter loop writes to them; with a person "
                       "on the line, the server can ask (elicitation).",
@@ -254,13 +254,12 @@ def plot_layers(active: int) -> None:
     use_hslu_style()
     fig, ax = plt.subplots(figsize=(11, 1.6))
     w, gap = 1.0, 0.25
-    for i, (name, time) in enumerate(LAYERS):
+    import textwrap
+    for i, name in enumerate(LAYERS):
         x = i * (w + gap)
         ax.add_patch(Rectangle((x, 0), w, 1, facecolor=ACCENT if i + 1 == active else "white", edgecolor="black", lw=1))
         ax.text(x + w / 2, 0.72, str(i + 1), ha="center", va="center", fontsize=13, fontweight="bold")
-        ax.text(x + w / 2, 0.42, name.replace(", ", ",\n", 1) if len(name) > 16 else name, ha="center", va="center",
-                fontsize=8.5)
-        ax.text(x + w / 2, 0.12, time, ha="center", va="center", fontsize=8)
+        ax.text(x + w / 2, 0.36, "\n".join(textwrap.wrap(name, 14)), ha="center", va="center", fontsize=8.5)
         if i < len(LAYERS) - 1:
             ax.add_patch(FancyArrowPatch((x + w + 0.03, 0.5), (x + w + gap - 0.03, 0.5), arrowstyle="-|>", mutation_scale=14, color="black", lw=1.2))
     ax.set_xlim(-0.05, len(LAYERS) * (w + gap) - gap + 0.05)
@@ -277,7 +276,7 @@ def where_we_are(block: int) -> None:
     if block >= 1:
         plot_layers(block)
     _markdown(f"**The question for today:** {DAY_QUESTION}\n\n"
-              f"**This block:** {b['question']}\n\n"
+              f"**This part of the day:** {b['question']}\n\n"
               f"**Where we start:** {b['open']}")
 
 
@@ -325,7 +324,7 @@ def result_card(block: int) -> None:
             print(table.to_string())
     tell = BLOCKS[block]["tell"]
     if tell:
-        _markdown(f"**Block {block} in three sentences, for your team:**\n\n" + "\n".join(f"{i}. {t}" for i, t in enumerate(tell, 1)))
+        _markdown(f"**Notebook {block:02d} in three sentences, for your team:**\n\n" + "\n".join(f"{i}. {t}" for i, t in enumerate(tell, 1)))
 
 
 def _picks_file():
@@ -353,19 +352,19 @@ def save_picks(picks: dict) -> None:
 
 
 def show_picks(block: int) -> None:
-    """Show your picks next to what the measurements of Blocks 1 to `block` say about each kind of claim."""
+    """Show your picks next to what the measurements of notebooks 01 to `block` say about each kind of claim."""
     picks_table(block, show=True)
 
 
 def picks_table(block: int, show: bool = False):
-    """Your picks next to what the measurements of Blocks 1 to `block` say, as a table."""
+    """Your picks next to what the measurements of notebooks 01 to `block` say, as a table."""
     import pandas as pd
     path = _picks_file()
     saved = json.loads(path.read_text()) if path.exists() else {}
     rows = []
     for kind, example in kinds(block):
         pick, why = saved.get(kind, ["", ""])
-        seen = [f"B{b}: {EVIDENCE[b][kind]}" for b in sorted(EVIDENCE) if b <= block and kind in EVIDENCE[b]]
+        seen = [f"notebook {b:02d}: {EVIDENCE[b][kind]}" for b in sorted(EVIDENCE) if b <= block and kind in EVIDENCE[b]]
         rows.append({"kind of claim": kind, "example": example, "your pick": pick, "why": why,
                      "what the measurements say so far": "\n".join(seen) or "not measured yet"})
     df = pd.DataFrame(rows)
