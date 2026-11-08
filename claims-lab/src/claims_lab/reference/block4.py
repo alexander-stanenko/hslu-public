@@ -19,22 +19,23 @@ tools, not how the pipeline decides.
 """
 from __future__ import annotations
 
+import operator
 import re
 from datetime import date
-from typing import Literal, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 import pandas as pd
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import interrupt
+from langgraph.types import Send, interrupt
 from pydantic import BaseModel, Field
 
 from .. import tools as T
 from ..data import Package, label, load_package
 from ..models import get_model, run_config
-from ..schemas import ClaimDecision, ClaimFacts
+from ..schemas import ClaimDecision, ClaimFacts, DocInfo
 from ..trace import show_graph
 from . import block1, block2
 
@@ -331,14 +332,15 @@ def approval(state: ClaimState) -> dict:
 
 # ------------------------------------------------------------------ The graph
 def build_pipeline(route_fn=route, llm=None, approval_step: bool = False, saver=None, screen_fn=screen,
-                   judgement_rules: str = JUDGEMENT_RULES, claims_agent=None):
+                   judgement_rules: str = JUDGEMENT_RULES, claims_agent=None, rules_fn=None):
     """Exercise B2 solution: the hybrid pipeline. With approval_step=True (stretch), every fast-track payout pauses for a
     person; such a graph needs a checkpointer (an in-memory one by default) and a thread_id in each run's config.
-    claims_agent replaces the judgement step (notebook 05, stretch: the claims team as that step)."""
+    claims_agent replaces the judgement step (notebook 05, extra task: the claims team as that step); rules_fn replaces
+    the rule checks (notebook 04, extra task: a rule moved from code into the prompt)."""
     g = StateGraph(ClaimState)
     g.add_node("extract_facts", extract_facts)
     g.add_node("screen", screen_fn)
-    g.add_node("rule_checks", rule_checks)
+    g.add_node("rule_checks", rules_fn or rule_checks)
     g.add_node("decide_by_rule", decide_by_rule)
     g.add_node("fast_track", fast_track)
     g.add_node("claims_agent", claims_agent or make_claims_agent(llm, judgement_rules))
@@ -571,3 +573,75 @@ def letter_demo(package_id: str = "PKG-003"):
             else:
                 print("Checker: passes" if update["passes"] else "Checker: fails",
                       *[f"  - {p}" for p in update["problems"]], "", sep="\n")
+
+
+# ------------------------------------------------------------------ Extra task: a rule moved from code into the prompt
+FREQUENCY_LINE = ("Three or more claims on this policy within 12 months, this one included (get_claim_history) → "
+                  "refer_adjuster.")
+
+
+def rule_checks_without(*issues: str):
+    """The rule checks without some red flags, such as "frequency": they run, but their findings are dropped."""
+    def rules(state: ClaimState) -> dict:
+        out = rule_checks(state)
+        return {**out, "findings": [f for f in out["findings"] if f.get("issue") not in issues]}
+    rules.__name__ = "rule_checks"
+    return rules
+
+
+# ------------------------------------------------------------------ Extra task: one model call per document (Send)
+class DocsState(TypedDict):
+    package: Package
+    infos: Annotated[list, operator.add]   # each classify_doc run adds (document name, DocInfo); the reducer joins them
+
+
+def fan_out(state: DocsState) -> list[Send]:
+    """One Send per document: LangGraph runs classify_doc once for each, at the same time."""
+    return [Send("classify_doc", {"name": name, "text": text}) for name, text in state["package"].documents.items()]
+
+
+def classify_doc(doc: dict) -> dict:
+    """Model: classify one document and pull out its key facts."""
+    info = get_model().with_structured_output(DocInfo).invoke(
+        f"Classify this document from a claim package and give its key facts.\n\n=== {doc['name']} ===\n{doc['text']}")
+    return {"infos": [(doc["name"], info)]}
+
+
+def build_per_document(fan_out_fn=fan_out, classify_fn=classify_doc):
+    g = StateGraph(DocsState)
+    g.add_node("classify_doc", classify_fn)
+    g.add_conditional_edges(START, fan_out_fn, ["classify_doc"])
+    g.add_edge("classify_doc", END)
+    return g.compile()
+
+
+def _run_per_document(app, pkg: Package) -> tuple[pd.DataFrame, int]:
+    from ..costs import CostMeter
+    meter = CostMeter()
+    out = app.invoke({"package": pkg}, config={"callbacks": [meter]})
+    expected = label(pkg.package_id).get("documents", {})
+    rows = [{"document": name, "labelled": expected.get(name, "?"), "model": info.doc_type,
+             "as labelled": "yes" if info.doc_type == expected.get(name) else "no", "key facts": info.key_facts[:90]}
+            for name, info in out["infos"]]
+    return pd.DataFrame(rows), meter.calls + meter.replayed_calls
+
+
+def check_per_document(app, package_id: str = "PKG-015"):
+    """Notebook 04, extra task: run your graph on one package; it must return one DocInfo per document. Shows the
+    document types next to the labelled ones and counts the model calls. Returns your graph, or ours if yours fails."""
+    pkg = load_package(package_id)
+    try:
+        df, calls = _run_per_document(app, pkg)
+        problem = None if len(df) == len(pkg.documents) else \
+            f"it returned {len(df)} results for {len(pkg.documents)} documents"
+    except Exception as e:  # noqa: BLE001
+        problem = _why(e)
+    if problem:
+        print(f"Your graph is not finished yet ({problem}).\nThe cells below use ours, block4.build_per_document().\n")
+        app = build_per_document()
+        df, calls = _run_per_document(app, pkg)
+    print(f"{package_id}: {len(pkg.documents)} documents, {calls} model calls, "
+          f"{(df['as labelled'] == 'yes').sum()} of {len(df)} types as labelled")
+    from IPython.display import display
+    display(df)
+    return app

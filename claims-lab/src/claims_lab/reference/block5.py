@@ -418,6 +418,27 @@ def comms_tool(letters=None) -> BaseTool:
     return ask_customer_comms
 
 
+
+def check_comms_tool(candidate) -> BaseTool:
+    """Notebook 05, extra task: check your ask_customer_comms without running it (no model call). An unfinished tool is
+    replaced by ours, block5.comms_tool(), with the reason."""
+    problem = None
+    if not isinstance(candidate, BaseTool):
+        problem = "it is not a tool (is @tool missing?)"
+    else:
+        text = (candidate.description or "").lower()
+        if "todo" in text or len(text) < 60:
+            problem = "its description is still empty or very short; the supervisor decides from it when to ask"
+        elif sorted(candidate.args) != ["missing_items", "package_id", "reason"]:
+            problem = f"it takes {sorted(candidate.args)}; it should take package_id, missing_items and reason"
+        elif _body_missing(candidate):
+            problem = "its body is not written yet; it should run the letter loop and return the letter"
+    if problem:
+        print(f"Your ask_customer_comms is not finished yet ({problem}).\nThe cells below use ours, block5.comms_tool().")
+        return comms_tool()
+    print(f"Yes: {candidate.name} is a tool with a description and the three arguments.")
+    return candidate
+
 # ------------------------------------------------------------------ Part E: claims that concern several policies
 # One event damages things insured under two or three policies (planning/19). The package gets one decision per
 # policy. Two designs: one agent that reads everything, and a team split by product line, whose handlers each read

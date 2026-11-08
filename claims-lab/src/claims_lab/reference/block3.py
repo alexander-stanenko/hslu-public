@@ -336,3 +336,42 @@ def mcp_to_langchain(client, mcp_tool_list) -> list[StructuredTool]:
         return StructuredTool.from_function(coroutine=call, name=t.name, description=t.description or "",
                                             args_schema=t.inputSchema)
     return [make(t) for t in mcp_tool_list]
+
+
+# ------------------------------------------------------------------ Extra task: test a bridge written in the notebook
+async def check_bridge(bridge_fn, server):
+    """Notebook 03, extra task: test your bridge on the server from A2 against mcp_to_langchain, with one tool call and
+    no model call. Returns the bridge to use: yours if it passes, otherwise ours (mcp_to_langchain), with a message."""
+    import inspect
+    problem = None
+    async with Client(server) as c:
+        listing = await c.list_tools()
+        ours = {t.name: t for t in mcp_to_langchain(c, listing)}
+        try:
+            mine = bridge_fn(c, listing)
+            if inspect.isawaitable(mine):
+                mine = await mine
+            names = sorted(str(getattr(t, "name", t)) for t in mine) if isinstance(mine, list) else None
+            if names is None:
+                problem = f"it returned {type(mine).__name__}, not a list of tools"
+            elif not all(isinstance(t, StructuredTool) for t in mine):
+                problem = "make(t) does not return a StructuredTool yet (TODO 2)"
+            elif names != sorted(ours):
+                problem = f"it made the tools {names}, the server offers {sorted(ours)}"
+            else:
+                by_name = {t.name: t for t in mine}
+                differ = [n for n, t in ours.items() if (by_name[n].description or "") != (t.description or "")]
+                if differ:
+                    problem = f"the description of {differ[0]} is not the server's"
+                else:
+                    got = str(await by_name["lookup_policy"].ainvoke({"policy_id": "P-10001"}))
+                    if "P-10001" not in got:
+                        problem = f"lookup_policy('P-10001') returned {got[:80]!r}, not the policy"
+        except Exception as e:  # noqa: BLE001
+            problem = f"{type(e).__name__}: {e}"
+    if problem:
+        print(f"Your bridge is not finished yet ({problem}).\nThe cells below use ours, block3.mcp_to_langchain.")
+        return mcp_to_langchain
+    print(f"Your bridge passes: the same {len(ours)} tools and descriptions as the server's, and lookup_policy('P-10001') "
+          f"returns the policy:\n  {got[:160]}...")
+    return bridge_fn

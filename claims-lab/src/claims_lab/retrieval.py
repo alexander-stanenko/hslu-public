@@ -5,7 +5,10 @@ Chunks are the numbered sections (§) of each document. With provider embeddings
 """
 from __future__ import annotations
 
+import os
 import re
+import threading
+import uuid
 
 import numpy as np
 
@@ -13,6 +16,7 @@ from .data import DATA_DIR
 
 DOCS = {"motor": "motor", "household": "household", "building": "building", "claims_guideline": "guideline"}
 _index = None
+_lock = threading.Lock()   # parallel tool calls in one process must not build the index twice
 
 
 def chunks() -> list[dict]:
@@ -47,13 +51,21 @@ def _cached_vectors(docs: list[str], emb) -> np.ndarray:
         return np.load(path)
     _embedding_call(docs)
     vecs = np.array(emb.embed_documents(docs))
-    tmp = path.with_suffix(".tmp.npy")
+    tmp = path.with_name(f"{path.stem}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp.npy")  # own file per writer
     np.save(tmp, vecs)
     tmp.replace(path)  # atomic, in case several server processes build it at once
     return vecs
 
 
 def _build():
+    global _index
+    with _lock:
+        if _index is not None:
+            return _index
+        return _build_locked()
+
+
+def _build_locked():
     global _index
     from .models import get_embeddings
     cs = chunks()

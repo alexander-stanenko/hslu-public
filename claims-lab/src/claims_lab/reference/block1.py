@@ -293,3 +293,90 @@ def outcome(messages: list) -> str:
         return m.group(1)
     found = [(text.find(w), name) for name, words in _OUTCOME_WORDS.items() for w in words if w in text]
     return min(found)[1] if found else "unclear"
+
+
+# ------------------------------------------------------------------ Extra task: a spending limit per run
+def run_loop_guarded(pkg: Package, max_steps: int = 8, max_usd: float = 0.01, llm=None, tools=None,
+                     system_prompt: str = SYSTEM_PROMPT) -> list:
+    """The agent loop with a spending limit: a CostMeter goes with every model call and raises BudgetExceeded once the
+    run has spent max_usd; the loop catches it and returns the messages so far."""
+    from ..costs import BudgetExceeded, CostMeter
+    llm = llm or get_model()
+    tools = tools or AGENT_TOOLS
+    tools_by_name = {t.name: t for t in tools}
+    bound = llm.bind_tools(tools)
+    meter = CostMeter(max_usd=max_usd)
+    messages = [SystemMessage(system_prompt), HumanMessage(pkg.text())]
+    try:
+        for _ in range(max_steps):
+            ai = bound.invoke(messages, config={"callbacks": [meter]})
+            messages.append(ai)
+            if not ai.tool_calls:
+                break
+            for call in ai.tool_calls:
+                tool_ = tools_by_name.get(call["name"])
+                result = tool_.invoke(call["args"]) if tool_ else json.dumps({"error": f"Unknown tool {call['name']}"})
+                messages.append(ToolMessage(content=str(result), tool_call_id=call["id"], name=call["name"]))
+    except BudgetExceeded as e:
+        print("stopped:", e)
+    print("this run:", meter)
+    return messages
+
+
+class _BudgetScriptedModel(_ScriptedModel):
+    """Like _ScriptedModel, but its second call hits the spending limit, as a real CostMeter would."""
+
+    def __init__(self, policy_id: str):
+        super().__init__(policy_id)
+        self.metered = []
+
+    def invoke(self, messages, config=None, **kwargs):
+        from ..costs import BudgetExceeded, CostMeter
+        callbacks = (config or {}).get("callbacks") or []
+        self.metered.append(any(isinstance(c, CostMeter) for c in callbacks))
+        if len(self.inputs) == 1:
+            self.inputs.append(list(messages))
+            raise BudgetExceeded("Stopped: spending limit reached (a scripted test, not a real limit).")
+        return super().invoke(messages, config, **kwargs)
+
+
+def check_guarded_loop(loop):
+    """Notebook 01, extra task: test your run_loop_guarded with a scripted stand-in for the model (no model call, no
+    cost). Returns yours if it passes, otherwise our run_loop_guarded, with a message."""
+    import contextlib
+    import io
+
+    from ..data import load_package
+    if loop is run_loop_guarded:
+        return loop
+    code, namespace = getattr(loop, "__code__", None), getattr(loop, "__globals__", None)
+    if code is None or namespace is None or "invoke" not in code.co_names:
+        print("Your run_loop_guarded is not finished yet (it makes no model call). "
+              "Using our version from claims_lab.reference.block1.")
+        return run_loop_guarded
+    if "bound" not in code.co_names:
+        print("Your run_loop_guarded does not use `bound`, so it cannot be tested offline. Using yours.")
+        return loop
+    fake, real = _BudgetScriptedModel("P-10001"), namespace.get("bound")
+    namespace["bound"] = fake
+    problems = []
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            out = loop(load_package("PKG-012"))
+        if not fake.metered or not all(fake.metered):
+            problems.append('a model call went out without the meter: pass config={"callbacks": [meter]} on every call')
+        if not isinstance(out, list) or not out:
+            problems.append("it does not return the list of messages")
+    except Exception as e:  # noqa: BLE001
+        from ..costs import BudgetExceeded
+        problems.append("it does not catch cl.BudgetExceeded" if isinstance(e, BudgetExceeded)
+                        else f"it raised {type(e).__name__}: {e}")
+    finally:
+        namespace["bound"] = real
+    if problems:
+        print(f"Your run_loop_guarded is not finished yet ({'; '.join(problems)}). "
+              "Using our version from claims_lab.reference.block1.")
+        return run_loop_guarded
+    print("Your run_loop_guarded passes our test (the meter goes with every call, and the limit ends the run "
+          "without an error). Using yours.")
+    return loop

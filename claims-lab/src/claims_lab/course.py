@@ -216,7 +216,7 @@ EVIDENCE = {
                                         "agent and the product-line team each decided 4 to 6 right, with 1 to 3 "
                                         "unsafe approvals; the pipeline per part decided 6 to 7 right and approved "
                                         "nothing unsafe."},
-    # Notebook 06: which system for which kind of claim, one line per kind (slide 97).
+    # Notebook 06: which system for which kind of claim, one line per kind (slide 98).
     6: {"Routine and complete": "Answer: the pipeline. Code checks the rules and computes the payout; no agent needed.",
         "Incomplete": "Answer: a rule asks the customer (request_info), and the letter loop writes to them; with a person "
                       "on the line, the server can ask (elicitation).",
@@ -385,10 +385,10 @@ def picks_table(block: int, show: bool = False):
 FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "three_systems": "A spectrum of autonomy (slide 15)",
            "agent_loop": "The agent loop (slide 21)",
-           "mcp_architecture": "MCP: host, client and server (slide 50)",
-           "hybrid_pipeline": "The hybrid pipeline (slide 68)",
-           "claims_team": "Lakeside's claims team (slide 84)",
-           "storm_claim": "The storm claim: one storm, three policies (slide 85)"}
+           "mcp_architecture": "MCP: host, client and server (slide 51)",
+           "hybrid_pipeline": "The hybrid pipeline (slide 69)",
+           "claims_team": "Lakeside's claims team (slide 85)",
+           "storm_claim": "The storm claim: one storm, three policies (slide 86)"}
 
 
 def figure(name: str, width: int = 900) -> None:
