@@ -133,6 +133,32 @@ def _scripted_input() -> None:
         pass
 
 
+_WRAP_CSS = "<style>pre { white-space: pre-wrap; overflow-wrap: anywhere; }</style>"
+
+
+def _wrap_css(*_) -> None:
+    from IPython.display import HTML, display
+    display(HTML(_WRAP_CSS))
+
+
+def _wrap_output() -> None:
+    """Show long text in full: pandas shows whole cells, and in Colab printed lines wrap instead of running off to the right."""
+    try:
+        import pandas as pd
+        pd.set_option("display.max_colwidth", None)
+    except ImportError:
+        pass
+    if not _in_colab():
+        return
+    from IPython import get_ipython
+    ip = get_ipython()
+    if ip is None:
+        return
+    if _wrap_css not in ip.events.callbacks["pre_run_cell"]:  # Colab styles each cell's output on its own
+        ip.events.register("pre_run_cell", _wrap_css)
+    _wrap_css()
+
+
 def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
     """Prepare the notebook: API key, provider, versions, data, a test call to the model.
 
@@ -143,6 +169,7 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
         **azure: optional Azure settings, e.g. endpoint=..., chat_deployment=..., embedding_deployment=..., api_version=...
     """
     _quiet()
+    _wrap_output()
     if not _in_colab():
         _load_dotenv()
     if os.environ.get("CLAIMS_LAB_NONINTERACTIVE") == "1":

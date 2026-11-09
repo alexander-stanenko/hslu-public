@@ -31,6 +31,7 @@ PRICES = {
     "claude-opus-5-5": (4.00, 20.00),
     "gpt-5.4-mini": (0.75, 4.50),
     "gpt-5.4-nano": (0.20, 1.25),
+    "gpt-5-mini": (0.25, 2.00),
     "offline": (0.0, 0.0),  # the scripted stand-in model (claims_lab.offline)
 }
 EMBEDDING_PRICE = 0.02  # USD per 1M tokens (text-embedding-3-small)

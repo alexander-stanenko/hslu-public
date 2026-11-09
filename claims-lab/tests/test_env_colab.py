@@ -89,3 +89,28 @@ def test_azure_model_uses_the_course_deployment_by_default(clean_env):
     assert m.openai_api_version == models.COURSE_AZURE["OPENAI_API_VERSION"]
     emb = models.get_embeddings()
     assert emb.deployment == models.COURSE_AZURE["AZURE_OPENAI_EMBEDDING_DEPLOYMENT"]
+
+
+def test_colab_output_wraps_in_every_cell_after_setup(clean_env, monkeypatch, capsys):
+    import IPython
+    import IPython.display
+    import pandas as pd
+    from claims_lab import env
+
+    class Events:
+        def __init__(self):
+            self.callbacks = {"pre_run_cell": []}
+
+        def register(self, name, fn):
+            self.callbacks[name].append(fn)
+
+    shell = types.SimpleNamespace(events=Events())
+    shown = []
+    monkeypatch.setattr(IPython, "get_ipython", lambda: shell)
+    monkeypatch.setattr(IPython.display, "display", lambda obj: shown.append(obj.data))
+    fake_colab(monkeypatch, {"AZURE_OPENAI_API_KEY": "k", "AZURE_OPENAI_ENDPOINT": "https://lakeside.example.com/"})
+    setup(ping=False)
+    setup(ping=False)  # every notebook calls setup again in the same runtime
+    assert shell.events.callbacks["pre_run_cell"] == [env._wrap_css]
+    assert shown and all("pre-wrap" in s for s in shown)
+    assert pd.get_option("display.max_colwidth") is None
