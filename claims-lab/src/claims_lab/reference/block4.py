@@ -38,6 +38,7 @@ from ..models import get_model, run_config
 from ..schemas import ClaimDecision, ClaimFacts, DocInfo
 from ..trace import show_graph
 from . import block1, block2
+from . import blank_line_after
 
 FAST_TRACK_LIMIT_CHF = block1.FAST_TRACK_LIMIT_CHF  # guideline §2: above this, an adjuster decides
 
@@ -232,6 +233,7 @@ REFERENCE_EDGES = [(START, "extract_facts"), (START, "screen"), (["extract_facts
                    ("decide_by_rule", END), ("fast_track", END), ("claims_agent", END)]
 
 
+@blank_line_after
 def check_graph(g: StateGraph, route_fn=route):
     """Exercise B1: compile your graph with g.compile() and compare its edges with the reference pipeline. If it does not
     compile yet (for example, no edges), your nodes get the reference edges instead, with a message."""
@@ -388,7 +390,7 @@ def _describe(node: str, update: dict) -> str:
         return "; ".join(x["reason"] for x in update["findings"]) or "all rules passed"
     if "decision" in update:
         d = update["decision"]
-        return f"{d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else "") + f": {d.reasoning[:160]}"
+        return f"{d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else "") + f": {d.reasoning}"
     return "no change"
 
 
@@ -509,6 +511,7 @@ def after_check(state: LetterState) -> str:
     return END if state["passes"] or state["rounds"] >= MAX_ROUNDS else "write_letter"
 
 
+@blank_line_after
 def test_checker(check_fn, after_fn, decision: ClaimDecision):
     """Exercise E: test your checker on the bad letter (it must not pass) and after_check on three states. A function
     that is not finished (an error, or no answer) is replaced by the reference, with a message. Returns the two functions
@@ -626,6 +629,7 @@ def _run_per_document(app, pkg: Package) -> tuple[pd.DataFrame, int]:
     return pd.DataFrame(rows), meter.calls + meter.replayed_calls
 
 
+@blank_line_after
 def check_per_document(app, package_id: str = "PKG-015"):
     """Notebook 04, extra task: run your graph on one package; it must return one DocInfo per document. Shows the
     document types next to the labelled ones and counts the model calls. Returns your graph, or ours if yours fails."""

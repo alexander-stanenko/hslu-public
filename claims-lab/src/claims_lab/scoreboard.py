@@ -19,6 +19,7 @@ from langchain_core.runnables import RunnableLambda
 from .costs import RUN_MAX_CALLS, CostMeter
 from .data import Package, labels, load_package
 from .schemas import ClaimDecision
+from .trace import indented
 
 HISTORY: list[dict] = []
 RUNS: dict[str, pd.DataFrame] = {}  # the latest per-claim table of each design, for the claims grid
@@ -240,7 +241,7 @@ def spot_check(system, *package_ids: str) -> None:
         except Exception as e:  # show the problem, keep going
             got, why = "ERROR", f"{type(e).__name__}: {e}"
         expected = next(l for l in labels() if l["package_id"] == pid)["expected"]["decision"]
-        print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {why[:110]}")
+        print(f"{'yes' if got == expected else 'no '} {pid}: {got} (expected {expected})\n{indented(why)}\n")
 
 
 async def aspot_check(system, *package_ids: str) -> None:
@@ -252,7 +253,7 @@ async def aspot_check(system, *package_ids: str) -> None:
         except Exception as e:  # show the problem, keep going
             got, why = "ERROR", f"{type(e).__name__}: {e}"
         expected = next(l for l in labels() if l["package_id"] == pid)["expected"]["decision"]
-        print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {why[:110]}")
+        print(f"{'yes' if got == expected else 'no '} {pid}: {got} (expected {expected})\n{indented(why)}\n")
 
 
 def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B")) -> pd.DataFrame:

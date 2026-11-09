@@ -33,6 +33,7 @@ from ..data import Package
 from ..models import get_model, run_config
 from ..schemas import ClaimDecision, PolicyDecision, PolicyDecisions
 from . import block2, block4
+from . import blank_line_after
 
 # ------------------------------------------------------------------ Part A: the specialists and their tools
 TOOLS = {t.name: t for t in block2.FINAL_TOOLS}   # the eight tools from notebook 02
@@ -113,6 +114,7 @@ def _split_problem(split) -> str | None:
     return None
 
 
+@blank_line_after
 def check_split(split) -> dict[str, list[BaseTool]]:
     """Exercise A1: check a split of the eight tools from notebook 02 between the two specialists, print it as a table and
     return {specialist: [tools]}. An unfinished or wrong split is replaced by ours, with the reason."""
@@ -200,6 +202,7 @@ def _body_missing(candidate: BaseTool) -> bool:
     return "..." in lines or not any(l.startswith("return") for l in lines)
 
 
+@blank_line_after
 def check_ask_tool(candidate, red_flags=None) -> BaseTool:
     """Exercise B1: check your ask_red_flag_checker without running it: it must be a tool that takes a question, with a
     description the supervisor can act on. An unfinished wrapper is replaced by ours, with the reason."""
@@ -419,6 +422,7 @@ def comms_tool(letters=None) -> BaseTool:
 
 
 
+@blank_line_after
 def check_comms_tool(candidate) -> BaseTool:
     """Notebook 05, extra task: check your ask_customer_comms without running it (no model call). An unfinished tool is
     replaced by ours, block5.comms_tool(), with the reason."""

@@ -19,6 +19,8 @@ from ..data import Package
 from ..models import get_model, run_config
 from ..schemas import ClaimDecision
 from . import block1
+from . import blank_line_after
+from ..trace import indented
 
 
 def run(agent, max_steps: int = 12):
@@ -207,6 +209,7 @@ def _sample_arg(name: str, schema: dict):
     return _SAMPLE_ARGS.get(name, 100.0 if types & {"number", "integer"} else "P-10001")
 
 
+@blank_line_after
 def check_tools(tools, reference=None, name: str = "my_tools") -> list:
     """Return `tools` if they can be given to a model; otherwise say why and return the reference set
     (FIXED_TOOLS by default), so the notebook can continue."""
@@ -270,6 +273,6 @@ def spot_check_steps(agent, *package_ids: str, max_steps: int = 12) -> dict:
         used = [tc["name"] for m in ais for tc in m.tool_calls if not tc["name"][:1].isupper()]  # not the ClaimDecision tool
         print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {len(ais)} model calls, "
               f"{out / max(1, len(ais)):.0f} output tokens per call, ${usd:.4f}")
-        print(f"     tools: {', '.join(used) or 'none'}\n     reason: {' '.join(why.split())[:160]}")
+        print(f"     tools: {', '.join(used) or 'none'}\n     reason:\n{indented(why, 7)}\n")
         results[pid] = result
     return results

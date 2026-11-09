@@ -22,6 +22,7 @@ from .. import tools as T
 from ..data import Package
 from ..models import get_model
 from ..schemas import ClaimDecision, ClaimFacts
+from . import blank_line_after
 
 FAST_TRACK_LIMIT_CHF = 5000
 
@@ -201,6 +202,7 @@ def _invoice_check_problems(check) -> list[str]:
     return problems
 
 
+@blank_line_after
 def check_my_invoice_check(check):
     """Notebook 01, Exercise B: test your check on PKG-015 and PKG-012 (no model call). Returns yours if it passes,
     otherwise our check_duplicate_invoice, with a message."""
@@ -259,6 +261,7 @@ def _loop_problems(loop) -> list[str] | None:
     return problems
 
 
+@blank_line_after
 def check_my_loop(loop):
     """Notebook 01, Exercise C1: test your run_loop with a scripted stand-in for the model (no model call, no cost).
     Returns yours if it passes, otherwise our run_loop, with a message."""
@@ -340,6 +343,7 @@ class _BudgetScriptedModel(_ScriptedModel):
         return super().invoke(messages, config, **kwargs)
 
 
+@blank_line_after
 def check_guarded_loop(loop):
     """Notebook 01, extra task: test your run_loop_guarded with a scripted stand-in for the model (no model call, no
     cost). Returns yours if it passes, otherwise our run_loop_guarded, with a message."""

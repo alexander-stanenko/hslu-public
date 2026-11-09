@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import textwrap
 
 from .costs import CACHED_FLAG, price_for
 
@@ -12,12 +13,26 @@ def _short(x, n: int) -> str:
     return s if len(s) <= n else s[: n - 3] + "..."
 
 
+WIDTH = 110  # characters per printed line; longer entries wrap under their text
+
+
+def _line(label: str, text: str) -> None:
+    """Print one trace entry, wrapped so that its label column stays readable."""
+    print(textwrap.fill(text, WIDTH, initial_indent=f"{label:<9}", subsequent_indent=" " * 9,
+                        break_long_words=True, break_on_hyphens=False))
+
+
+def indented(text: str, indent: int = 4) -> str:
+    """Text on its own indented lines, wrapped, so that a long reason stays readable under the line it belongs to."""
+    return textwrap.fill(" ".join(str(text).split()), WIDTH, initial_indent=" " * indent, subsequent_indent=" " * indent)
+
+
 def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
     """Print an agent run step by step.
 
     Args:
         result: the dict returned by agent.invoke(...) (with a "messages" key), or a list of messages.
-        max_chars: truncate long contents to this many characters.
+        max_chars: truncate long contents to this many characters (the final answer is shown in full).
         chart: also draw the input and output tokens of each model call.
     """
     messages = result["messages"] if isinstance(result, dict) else result
@@ -29,11 +44,12 @@ def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
     for m in messages:
         kind = m.type
         if kind == "human":
-            print(f"USER     {_short(m.text, max_chars)}")
+            _line("USER", _short(m.text, max_chars))
         elif kind == "system":
-            print(f"SYSTEM   {_short(m.text, max_chars)}")
+            _line("SYSTEM", _short(m.text, max_chars))
         elif kind == "ai":
             step += 1
+            print()  # each model step starts a block: the step, then the tool results it asked for
             meta = m.response_metadata or {}
             u = m.usage_metadata or {}
             per_call.append((u.get("input_tokens", 0), u.get("output_tokens", 0)))
@@ -45,17 +61,17 @@ def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
                 pin, pout = price_for(meta.get("model_name"))
                 cost += u.get("input_tokens", 0) * pin / 1e6 + u.get("output_tokens", 0) * pout / 1e6
             if m.text.strip() and m.tool_calls:
-                print(f"AI  #{step:<3} (thinks) {_short(m.text, max_chars)}")
+                _line(f"AI  #{step}", "(thinks) " + _short(m.text, max_chars))
             for tc in m.tool_calls:
                 args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
-                print(f"AI  #{step:<3} calls {tc['name']}({_short(args, max_chars)})")
+                _line(f"AI  #{step}", f"calls {tc['name']}({_short(args, max_chars)})")
             if not m.tool_calls:
-                print(f"AI  #{step:<3} ANSWER {_short(m.text, max_chars * 2)}")
+                _line(f"AI  #{step}", "ANSWER " + " ".join(m.text.split()))
         elif kind == "tool":
             status = " (ERROR)" if getattr(m, "status", "") == "error" else ""
             name = m.name or call_names.get(getattr(m, "tool_call_id", None), "?")
-            print(f"TOOL     {name}{status}: {_short(m.content if isinstance(m.content, str) else m.text, max_chars)}")
-    print(f"Total: {calls} LLM calls, {tin:,} in / {tout:,} out tokens, ${cost:.4f}"
+            _line("TOOL", f"{name}{status}: {_short(m.content if isinstance(m.content, str) else m.text, max_chars)}")
+    print(f"\nTotal: {calls} LLM calls, {tin:,} in / {tout:,} out tokens, ${cost:.4f}"
           + (f" ({'all' if replayed == calls else replayed} replayed from the recording: free now, cost as recorded)"
              if replayed else ""))
     if chart and any(i for i, _ in per_call):
