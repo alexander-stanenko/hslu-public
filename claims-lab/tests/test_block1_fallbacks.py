@@ -107,3 +107,11 @@ def test_invoice_check_finished_empty_and_wrong():
 ])
 def test_outcome_is_read_from_the_final_answer(text, expected):
     assert block1.outcome([AIMessage(content=text)]) == expected
+
+
+def test_a_check_run_again_on_our_version_says_it_is_ours(capsys):
+    ours = block1.check_my_invoice_check(lambda facts, policy: None)   # unfinished: switches to ours
+    capsys.readouterr()
+    assert block1.check_my_invoice_check(ours) is ours                 # the cell run a second time
+    out = capsys.readouterr().out
+    assert "This is our check_duplicate_invoice" in out and "Using yours" not in out

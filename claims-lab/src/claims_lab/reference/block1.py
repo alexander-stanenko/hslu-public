@@ -206,6 +206,9 @@ def _invoice_check_problems(check) -> list[str]:
 def check_my_invoice_check(check):
     """Notebook 01, Exercise B: test your check on PKG-015 and PKG-012 (no model call). Returns yours if it passes,
     otherwise our check_duplicate_invoice, with a message."""
+    if check is check_duplicate_invoice:          # the cell was run again after it switched to ours
+        print("This is our check_duplicate_invoice from claims_lab.reference.block1.")
+        return check
     problems = _invoice_check_problems(check)
     if not problems:
         print("Your check_duplicate_invoice passes our test (reused invoice referred, new invoice passes). Using yours.")

@@ -205,6 +205,8 @@ def test_route(route_fn):
     """Exercise B2: try a routing function on three hand-made states and print where each goes. An unfinished function
     (an error, or no step name) is replaced by the reference route, with a message. Returns the function to use."""
     failed = [{"decision": "decline", "issue": "not_covered", "reason": "glass is not covered"}]
+    if route_fn is route:                          # the cell was run again after it switched to ours
+        print("This is our route, block4.route.\n")
     cases = [("a failed rule", failed, False, "decide_by_rule"), ("signs of judgement", [], True, "claims_agent"),
              ("a clean claim", [], False, "fast_track")]
     for name, findings, needs, _ in cases:
@@ -517,6 +519,9 @@ def test_checker(check_fn, after_fn, decision: ClaimDecision):
     that is not finished (an error, or no answer) is replaced by the reference, with a message. Returns the two functions
     to use in the loop."""
     print(BAD_LETTER, "\n")
+    for mine, ours in ((check_fn, check_letter), (after_fn, after_check)):
+        if mine is ours:                           # the cell was run again after it switched to ours
+            print(f"This is our {ours.__name__}, block4.{ours.__name__}.\n")
     try:
         verdict = check_fn({"letter": BAD_LETTER, "decision": decision})
         problem = None if isinstance(verdict, dict) and {"passes", "problems"} <= set(verdict) else \

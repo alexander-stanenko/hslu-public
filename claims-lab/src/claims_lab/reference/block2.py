@@ -218,6 +218,9 @@ def check_tools(tools, reference=None, name: str = "my_tools") -> list:
     reference = FIXED_TOOLS if reference is None else reference
     try:
         tools = list(tools)
+        if len(tools) == len(reference) and all(t is r for t, r in zip(tools, reference)):   # catch-up line, or run again
+            print("These are our tools from claims_lab.reference.block2.")
+            return tools
         for t in tools:
             if not isinstance(t, BaseTool):
                 raise TypeError(f"{t!r} is not a tool (is @tool missing?)")

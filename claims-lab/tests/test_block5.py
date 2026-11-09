@@ -274,3 +274,16 @@ def test_agent_cards_show_the_prompts_the_code_uses():
     writer = B.agent_card("writer")
     assert B.CORRESPONDENCE_PROMPT.strip() in writer and "`send_email`" in writer and "missing_items" in writer
     assert "Built in" not in B.agent_card("coverage_analyst")   # built in plain view in the notebook
+
+
+def test_wrapper_checks_run_again_on_our_fallback_say_it_is_ours(capsys):
+    ours = B.check_ask_tool(lambda question: "x")
+    again = B.check_ask_tool(ours)
+    assert again is ours and "This is our ask_red_flag_checker" in capsys.readouterr().out
+    comms = B.check_comms_tool(lambda x: "x")
+    assert B.check_comms_tool(comms) is comms and "This is our ask_customer_comms" in capsys.readouterr().out
+
+
+def test_tool_check_on_our_tools_says_so(capsys):
+    assert block2.check_tools(block2.FIXED_TOOLS) == list(block2.FIXED_TOOLS)
+    assert "These are our tools" in capsys.readouterr().out

@@ -118,6 +118,8 @@ def _split_problem(split) -> str | None:
 def check_split(split) -> dict[str, list[BaseTool]]:
     """Exercise A1: check a split of the eight tools from notebook 02 between the two specialists, print it as a table and
     return {specialist: [tools]}. An unfinished or wrong split is replaced by ours, with the reason."""
+    if split is TOOL_SPLIT:
+        print("This is our split, block5.TOOL_SPLIT.")
     problem = _split_problem(split)
     if problem:
         print(f"Your split is not finished or not right yet ({problem}).\nThe cells below use ours, block5.TOOL_SPLIT.\n")
@@ -203,10 +205,18 @@ def _body_missing(candidate: BaseTool) -> bool:
 
 
 @blank_line_after
+def _is_ours(candidate) -> bool:
+    """True for a tool a check helper handed out as ours (a fallback), so running the check again says so."""
+    return bool((getattr(candidate, "metadata", None) or {}).get("course_reference"))
+
+
 def check_ask_tool(candidate, red_flags=None) -> BaseTool:
     """Exercise B1: check your ask_red_flag_checker without running it: it must be a tool that takes a question, with a
     description the supervisor can act on. An unfinished wrapper is replaced by ours, with the reason."""
     problem = None
+    if _is_ours(candidate):                        # the cell was run again after it switched to ours
+        print("This is our ask_red_flag_checker from claims_lab.reference.block5.")
+        return candidate
     if not isinstance(candidate, BaseTool):
         problem = "it is not a tool (is @tool missing?)"
     else:
@@ -223,7 +233,9 @@ def check_ask_tool(candidate, red_flags=None) -> BaseTool:
     if problem:
         print(f"Your ask_red_flag_checker is not finished yet ({problem}).\nThe cells below use ours, with this description:\n"
               f"  {RED_FLAG_DESCRIPTION}")
-        return ask_tool(red_flags or red_flag_checker(), "ask_red_flag_checker", RED_FLAG_DESCRIPTION)
+        ours = ask_tool(red_flags or red_flag_checker(), "ask_red_flag_checker", RED_FLAG_DESCRIPTION)
+        ours.metadata = {**(ours.metadata or {}), "course_reference": True}
+        return ours
     print(f"Yes: {candidate.name} is a tool that takes a question, and its description names what the checker needs.")
     return candidate
 
@@ -426,6 +438,9 @@ def comms_tool(letters=None) -> BaseTool:
 def check_comms_tool(candidate) -> BaseTool:
     """Notebook 05, extra task: check your ask_customer_comms without running it (no model call). An unfinished tool is
     replaced by ours, block5.comms_tool(), with the reason."""
+    if _is_ours(candidate):                        # the cell was run again after it switched to ours
+        print("This is our ask_customer_comms, block5.comms_tool().")
+        return candidate
     problem = None
     if not isinstance(candidate, BaseTool):
         problem = "it is not a tool (is @tool missing?)"
@@ -439,7 +454,9 @@ def check_comms_tool(candidate) -> BaseTool:
             problem = "its body is not written yet; it should run the letter loop and return the letter"
     if problem:
         print(f"Your ask_customer_comms is not finished yet ({problem}).\nThe cells below use ours, block5.comms_tool().")
-        return comms_tool()
+        ours = comms_tool()
+        ours.metadata = {**(ours.metadata or {}), "course_reference": True}
+        return ours
     print(f"Yes: {candidate.name} is a tool with a description and the three arguments.")
     return candidate
 
