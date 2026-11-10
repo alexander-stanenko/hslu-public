@@ -146,7 +146,7 @@ def test_unfinished_route_and_graph_fall_back_to_the_reference(offline, capsys):
         g.add_node("claims_agent", B.make_claims_agent())
         return g
     app = B.check_graph(fresh())
-    assert "Explore path, or B1 not finished" in capsys.readouterr().out
+    assert "Explore path, or C1 not finished" in capsys.readouterr().out
     assert B._edges(app) == B._edges(B.build_pipeline())
     g = fresh()
     g.add_edge("__start__", "extract_facts")
@@ -187,10 +187,22 @@ def test_the_duplicate_rule_can_be_moved_out_of_code():
     """Extra task: without the duplicate-invoice rule in code, PKG-002 passes the rules; the line for the prompt names it."""
     lab = cl.label("PKG-002")
     state = perfect_state(lab)
-    assert [f["issue"] for f in state["findings"]] == ["duplicate_invoice"]
-    without = {**state, **B.rule_checks_without("duplicate_invoice")(state)}
-    assert without["findings"] == [] and B.route(without) == "fast_track"
-    assert B.rule_checks_without("duplicate_invoice").__name__ == "rule_checks"
+    assert state["finding"]["issue"] == "duplicate_invoice"
+    without = {**state, **B.rule_checks_without(B.check_invoice_reused)(state)}
+    assert without["finding"] is None and B.route(without) == "fast_track"
+    assert B.rule_checks_without(B.check_invoice_reused).__name__ == "rule_checks"
+
+
+def test_every_label_is_decided_by_the_first_failed_rule():
+    """The seven checks on the labelled facts: a rule claim gets its label's decision and issue; the others pass."""
+    for lab in cl.data.labels("dev") + cl.data.labels("heldout"):
+        state = perfect_state(lab)
+        exp = lab["expected"]
+        if B.route({**state, "judgement": B.Judgement(needs_judgement=False)}) == "decide_by_rule":
+            d = B.decide_by_rule(state)["decision"]
+            assert d.decision == exp["decision"] and d.issues + d.missing_items == exp["issues"] + exp["missing_items"], lab["package_id"]
+        else:
+            assert exp["decision"] in ("fast_track", "refer_adjuster") and exp["issues"] in ([], ["possible_exclusion"]), lab["package_id"]
     assert "search_claims_by_invoice" in B.DUPLICATE_LINE and "refer_adjuster" in B.DUPLICATE_LINE
 
 
@@ -204,3 +216,13 @@ def test_per_document_graph_gives_one_result_per_document(offline, capsys):
     out = capsys.readouterr().out
     assert "PKG-010: 3 documents, 3 model calls" in out and "of 3 types as labelled" in out   # offline: types not read
     assert "Your graph is not finished" not in out and app is not None
+
+
+def test_an_unfinished_limit_check_falls_back_to_ours(capsys):
+    def unfinished(f, policy):
+        ...
+    assert B.test_limit_check(unfinished) is B.check_fast_track_limit
+    assert "not finished" in capsys.readouterr().out
+    assert B.test_limit_check(B.check_fast_track_limit) is B.check_fast_track_limit
+    out = capsys.readouterr().out
+    assert "not finished" not in out and "CHF   8,600: refer_adjuster  yes" in out and "CHF   1,150: passes          yes" in out

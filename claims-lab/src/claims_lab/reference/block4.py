@@ -58,7 +58,7 @@ class ClaimState(TypedDict, total=False):
     facts: Facts
     judgement: Judgement
     policy: dict
-    findings: list[dict]  # failed rules, in the order of the cheat sheet
+    finding: dict | None  # the first rule that failed, or None if every rule passed
     decision: ClaimDecision
 
 
@@ -105,49 +105,103 @@ def test_screen(screen_fn, ids: list[str] | None = None) -> pd.DataFrame:
     return df
 
 
-# ------------------------------------------------------------------ The rules, in code (the clerk's four questions)
-def rule_checks(state: ClaimState) -> dict:
-    """Code: the clerk's questions 1 to 4 and the fast-track limit. Each failed rule becomes a finding.
+# ------------------------------------------------------------------ The rules, in code (slide "Which checks need a model?")
+# One small function per check; notebook 04, B2, has the same code. A check returns a finding if its rule fails, else None.
+# A finding is {"decision": ..., "issue" or "missing": ..., "reason": ...}.
+def find_policy(f: Facts) -> dict | None:
+    """The policy: by its number, or by name and plate if exactly one policy matches. None if not found."""
+    if f.policy_id:
+        policy = tools.lookup_policy(f.policy_id)
+        return None if "error" in policy else policy
+    matches = tools.find_policies(name=f.customer_name, plate=f.plate) if f.customer_name else []
+    return matches[0] if len(matches) == 1 else None
 
-    A finding is {"decision": ..., "issue" or "missing": ..., "reason": ...}. The first "no" decides; question 4's
-    exclusions are not here: no rule can read them, so the screen looks for them.
-    """
-    f = state["facts"]
-    policy = {}
-    stop = lambda decision, reason, **kw: {"policy": policy, "findings": [{"decision": decision, "reason": reason, **kw}]}
-    # 1 policy known? By number, or by name and plate with exactly one match
-    pid = f.policy_id
-    if not pid and f.customer_name:
-        matches = tools.find_policies(name=f.customer_name, plate=f.plate)
-        pid = matches[0]["policy_id"] if len(matches) == 1 else None
-    policy = tools.lookup_policy(pid) if pid else {"error": "No policy number, and name and plate do not identify one policy."}
-    if "error" in policy:
-        return stop("request_info", policy["error"], missing="policy_id")
-    # 2 covered on that day?
+
+def check_policy_found(f: Facts, policy: dict | None) -> dict | None:
+    if policy is None:
+        return {"decision": "request_info", "missing": "policy_id",
+                "reason": "No policy number, and name and plate do not identify one policy."}
+
+
+def check_policy_valid(f: Facts, policy: dict) -> dict | None:
     if f.damage_date and not policy["valid_from"] <= f.damage_date <= policy["valid_to"]:
-        return stop("decline", f"Policy valid {policy['valid_from']} to {policy['valid_to']}, damage on {f.damage_date}.",
-                    issue="policy_inactive")
+        return {"decision": "decline", "issue": "policy_inactive",
+                "reason": f"Policy valid {policy['valid_from']} to {policy['valid_to']}, damage on {f.damage_date}."}
+
+
+def check_damage_covered(f: Facts, policy: dict) -> dict | None:
     if f.damage not in policy["covers"]:
-        return stop("decline", f"The policy covers {', '.join(policy['covers'])}, not {f.damage}.", issue="not_covered")
-    # 3 documents there?
-    missing = [] if "invoice" in f.documents_present and f.amount_chf is not None else ["invoice"]
+        return {"decision": "decline", "issue": "not_covered",
+                "reason": f"The policy covers {', '.join(policy['covers'])}, not {f.damage}."}
+
+
+def check_invoice_present(f: Facts, policy: dict) -> dict | None:
+    if "invoice" not in f.documents_present or f.amount_chf is None:
+        return {"decision": "request_info", "missing": "invoice", "reason": "No invoice with an amount."}
+
+
+def check_police_report(f: Facts, policy: dict) -> dict | None:
     if f.damage == "theft" and "police_report" not in f.documents_present:
-        missing.append("police_report")
-    if missing:
-        return {"policy": policy, "findings": [{"decision": "request_info", "missing": m, "reason": f"Missing: {m}."} for m in missing]}
-    # 4 a reused invoice; and the limit
-    flags = []
-    if f.invoice_no and tools.search_claims_by_invoice(f.invoice_no):
-        flags.append(("duplicate_invoice", f"Invoice {f.invoice_no} was already used in an earlier claim."))
-    if (f.amount_chf or 0) > FAST_TRACK_LIMIT_CHF:
-        flags.append(("above_fast_track_limit", f"CHF {f.amount_chf:,.0f} is above the fast-track limit of CHF {FAST_TRACK_LIMIT_CHF:,}."))
-    return {"policy": policy, "findings": [{"decision": "refer_adjuster", "issue": i, "reason": r} for i, r in flags]}
+        return {"decision": "request_info", "missing": "police_report", "reason": "A theft needs a police report."}
+
+
+def check_invoice_reused(f: Facts, policy: dict) -> dict | None:
+    if f.invoice_no and tools.search_claims_by_invoice(f.invoice_no):   # looks up the earlier claims
+        return {"decision": "refer_adjuster", "issue": "duplicate_invoice",
+                "reason": f"Invoice {f.invoice_no} was already used in an earlier claim."}
+
+
+def check_fast_track_limit(f: Facts, policy: dict) -> dict | None:
+    if f.amount_chf > FAST_TRACK_LIMIT_CHF:
+        return {"decision": "refer_adjuster", "issue": "above_fast_track_limit",
+                "reason": f"CHF {f.amount_chf:,.0f} is above the fast-track limit of CHF {FAST_TRACK_LIMIT_CHF:,}."}
+
+
+RULES = [check_policy_found, check_policy_valid, check_damage_covered, check_invoice_present, check_police_report,
+         check_invoice_reused, check_fast_track_limit]   # the order of the cheat sheet: the first "no" decides
+
+
+def run_rules(f: Facts, policy: dict | None, rules: list = RULES) -> dict | None:
+    """The first finding, in the order of the list; None if every rule passes."""
+    for rule in rules:
+        finding = rule(f, policy)
+        if finding:
+            return finding
+    return None
+
+
+def rule_checks(state: ClaimState) -> dict:
+    """Code: find the policy, then the checks in order. The exclusions of question 4 need reading: the screen."""
+    policy = find_policy(state["facts"])
+    return {"policy": policy, "finding": run_rules(state["facts"], policy)}
+
+
+def test_limit_check(check_fn):
+    """Notebook 04, B2 (Build): try a limit check on CHF 8,600 and CHF 1,150. An unfinished one (an error, or no finding
+    above the limit) is replaced by ours, with a message. Returns the function to use."""
+    if check_fn is check_fast_track_limit:
+        print("This is our check, block4.check_fast_track_limit.")
+    cases = [(8600.0, True), (1150.0, False)]
+    try:
+        results = [check_fn(Facts(damage="collision", amount_chf=amount), {}) for amount, _ in cases]
+        ok = all(bool(r) == fails and (not r or r.get("decision") == "refer_adjuster") for r, (_, fails) in zip(results, cases))
+        problem = None if ok else "it does not return a refer_adjuster finding above CHF 5,000 only"
+    except Exception as e:  # noqa: BLE001  (any error in the participant's code)
+        problem = _why(e)
+    if problem:
+        print(f"Explore path, or the check not finished: the cells below use ours, block4.check_fast_track_limit. "
+              f"(Details for Build: {problem}.)")
+        check_fn = check_fast_track_limit
+    for amount, fails in cases:
+        r = check_fn(Facts(damage="collision", amount_chf=amount), {})
+        print(f"CHF {amount:>7,.0f}: {'refer_adjuster' if r else 'passes':<15} {'yes' if bool(r) == fails else 'no'}")
+    return check_fn
 
 
 # ------------------------------------------------------------------ The three ways out
 def route(state: ClaimState) -> str:
-    """Exercise B2 solution. The first failed rule decides; otherwise judgement goes to the agent; otherwise pay."""
-    if state["findings"]:
+    """Exercise C1 solution. A failed rule decides; otherwise judgement goes to the agent; otherwise pay."""
+    if state["finding"]:
         return "decide_by_rule"
     if state["judgement"].needs_judgement:
         return "claims_agent"
@@ -162,16 +216,16 @@ def _why(e: Exception) -> str:
 
 
 def test_route(route_fn):
-    """Exercise B2: try a routing function on three hand-made states and print where each goes. An unfinished function
+    """Exercise C1: try a routing function on three hand-made states and print where each goes. An unfinished function
     (an error, or no step name) is replaced by the reference route, with a message. Returns the function to use."""
-    failed = [{"decision": "decline", "issue": "not_covered", "reason": "glass is not covered"}]
+    failed = {"decision": "decline", "issue": "not_covered", "reason": "glass is not covered"}
     if route_fn is route:                          # the cell was run again after it switched to ours
         print("This is our route, block4.route.\n")
-    cases = [("a failed rule", failed, False, "decide_by_rule"), ("signs of judgement", [], True, "claims_agent"),
-             ("a clean claim", [], False, "fast_track")]
-    for name, findings, needs, _ in cases:
+    cases = [("a failed rule", failed, False, "decide_by_rule"), ("signs of judgement", None, True, "claims_agent"),
+             ("a clean claim", None, False, "fast_track")]
+    for name, finding, needs, _ in cases:
         try:
-            way = route_fn({"findings": findings, "judgement": Judgement(needs_judgement=needs)})
+            way = route_fn({"finding": finding, "judgement": Judgement(needs_judgement=needs)})
             problem = None if way in WAYS else f"for {name} it returned {way!r}, not one of {', '.join(WAYS)}"
         except Exception as e:  # noqa: BLE001  (any error in the participant's code)
             problem = f"for {name}: {_why(e)}"
@@ -180,8 +234,8 @@ def test_route(route_fn):
                   f"(Details for Build: {problem}.)\n")
             route_fn = route
             break
-    for name, findings, needs, expected in cases:
-        way = route_fn({"findings": findings, "judgement": Judgement(needs_judgement=needs)})
+    for name, finding, needs, expected in cases:
+        way = route_fn({"finding": finding, "judgement": Judgement(needs_judgement=needs)})
         print(f"{name:<20} goes to {way:<15} {'yes' if way == expected else 'no, expected ' + expected}")
     return route_fn
 
@@ -197,12 +251,12 @@ REFERENCE_EDGES = [(START, "extract_facts"), (START, "screen"), (["extract_facts
 
 @blank_line_after
 def check_graph(g: StateGraph, route_fn=route):
-    """Exercise B1: compile your graph with g.compile() and compare its edges with the reference pipeline. If it does not
+    """Exercise C1: compile your graph with g.compile() and compare its edges with the reference pipeline. If it does not
     compile yet (for example, no edges), your nodes get the reference edges instead, with a message."""
     try:
         app = g.compile()
     except Exception as e:  # noqa: BLE001
-        print(f"Explore path, or B1 not finished: the cells below use your steps with our route and edges, as expected. "
+        print(f"Explore path, or C1 not finished: the cells below use your steps with our route and edges, as expected. "
               f"(Details for Build: {_why(e)}.)")
         ref = StateGraph(g.state_schema)
         for name, spec in g.nodes.items():
@@ -222,12 +276,11 @@ def check_graph(g: StateGraph, route_fn=route):
 
 
 def decide_by_rule(state: ClaimState) -> dict:
-    """Code: the decision of the first failed rule, with every finding that leads to the same decision."""
-    first = state["findings"][0]["decision"]
-    same = [x for x in state["findings"] if x["decision"] == first]
-    return {"decision": ClaimDecision(decision=first, issues=[x["issue"] for x in same if "issue" in x],
-                                      missing_items=[x["missing"] for x in same if "missing" in x],
-                                      reasoning=" ".join(x["reason"] for x in same) + " (Decided by rule.)")}
+    """Code: the failed rule decides the claim."""
+    x = state["finding"]
+    return {"decision": ClaimDecision(decision=x["decision"], issues=[x["issue"]] if "issue" in x else [],
+                                      missing_items=[x["missing"]] if "missing" in x else [],
+                                      reasoning=x["reason"] + " (Decided by rule.)")}
 
 
 def fast_track(state: ClaimState) -> dict:
@@ -349,8 +402,8 @@ def _describe(node: str, update: dict) -> str:
     if "judgement" in update:
         j = update["judgement"]
         return "signs that need judgement: " + ("; ".join(j.signs) if j.needs_judgement else "none")
-    if "findings" in update:
-        return "; ".join(x["reason"] for x in update["findings"]) or "all rules passed"
+    if "finding" in update:
+        return update["finding"]["reason"] if update["finding"] else "all rules passed"
     if "decision" in update:
         d = update["decision"]
         return f"{d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else "") + f": {d.reasoning}"
@@ -549,11 +602,13 @@ DUPLICATE_LINE = ("An invoice number that was already used in an earlier claim (
                   "refer_adjuster.")
 
 
-def rule_checks_without(*issues: str):
-    """The rule checks without some red flags, such as "duplicate_invoice": they run, but their findings are dropped."""
+def rule_checks_without(*checks):
+    """The rule checks without some of RULES, such as check_invoice_reused (notebook 04, Extra 3)."""
+    kept = [r for r in RULES if r not in checks]
+
     def rules(state: ClaimState) -> dict:
-        out = rule_checks(state)
-        return {**out, "findings": [f for f in out["findings"] if f.get("issue") not in issues]}
+        policy = find_policy(state["facts"])
+        return {"policy": policy, "finding": run_rules(state["facts"], policy, kept)}
     rules.__name__ = "rule_checks"
     return rules
 
