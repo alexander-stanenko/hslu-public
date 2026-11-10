@@ -147,3 +147,46 @@ def test_scoreboard_counts_claims_sent_to_a_person(capsys):
     h = cl.scoreboard_history(plot=False).iloc[-1]
     assert h["to_person"] == 3   # PKG-002, PKG-006 and PKG-007
     assert "sent to a person (refer_adjuster): 3 of 8 claims, 3 expected" in out
+
+
+def test_replay_cache_stores_the_duration_and_the_meter_reports_it(tmp_path):
+    """A recorded call keeps how long it took, so a replayed scoreboard reports model time as recorded; a recording
+    made before durations were stored makes the time unknown instead of near zero."""
+    import time
+    from langchain_core.messages import AIMessage as AI
+    cache = SQLiteReplayCache(tmp_path / "c.db")
+    assert cache.lookup("p", "llm") is None          # the miss starts the clock
+    time.sleep(0.05)
+    cache.update("p", "llm", [ChatGeneration(message=AI(content="hi"))])
+    hit = cache.lookup("p", "llm")
+    recorded = hit[0].message.response_metadata["claims_lab_seconds"]
+    assert 0.04 <= recorded < 5
+    cache.update("old", "llm", [ChatGeneration(message=AI(content="old"))])   # no miss before: no duration
+    meter = CostMeter()
+    meter.on_llm_end(LLMResult(generations=[hit]))
+    assert meter.model_seconds == recorded and meter.seconds_unknown == 0
+    meter.on_llm_end(LLMResult(generations=[cache.lookup("old", "llm")]))
+    assert meter.seconds_unknown == 1
+
+
+def test_backfill_keeps_the_recorded_answer(tmp_path, monkeypatch):
+    from langchain_core.messages import AIMessage as AI
+    cache = SQLiteReplayCache(tmp_path / "c.db")
+    cache.update("p", "llm", [ChatGeneration(message=AI(content="recorded"))])
+    monkeypatch.setenv("CLAIMS_LAB_REPLAY_BACKFILL_SECONDS", "1")
+    assert cache.lookup("p", "llm") is None           # runs live once, to be timed
+    new = [ChatGeneration(message=AI(content="new answer"))]
+    cache.update("p", "llm", new)
+    assert new[0].message.text == "recorded"          # the caller gets the recorded answer back
+    monkeypatch.delenv("CLAIMS_LAB_REPLAY_BACKFILL_SECONDS")
+    hit = cache.lookup("p", "llm")
+    assert hit[0].message.text == "recorded" and "claims_lab_seconds" in hit[0].message.response_metadata
+
+
+def test_scoreboard_counts_tool_calls_and_model_time(capsys):
+    from claims_lab.reference import block2
+    cl.setup(provider="offline", ping=False)
+    df = cl.scoreboard(block2.final_agent(), ids=["PKG-001"], show=False)
+    assert df["tool_calls"].iloc[0] >= 1 and df["seconds"].iloc[0] is not None
+    hist = cl.scoreboard_history(plot=False)
+    assert "tool_calls_per_pkg" in hist and "wall_seconds" not in hist

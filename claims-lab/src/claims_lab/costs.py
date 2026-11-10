@@ -38,6 +38,7 @@ PRICES = {
 EMBEDDING_PRICE = 0.02  # USD per 1M tokens (text-embedding-3-small)
 LONG_CONTEXT = {"claude-haiku-5-5": (100_000, 0.50, 2.50)}  # above this many input tokens a higher rate applies
 CACHED_FLAG = "claims_lab_cached"
+SECONDS_KEY = "claims_lab_seconds"  # how long the call took when it was recorded (the replay cache stores it)
 
 
 class BudgetExceeded(RuntimeError):
@@ -111,6 +112,8 @@ class CostMeter(BaseCallbackHandler):
 
     Live calls go into calls / tokens / cost_usd (what this session spends). Calls replayed from the cache go into
     replayed_calls / replayed_cost_usd, with the usage recorded at the time (what the design costs when it runs live).
+    model_seconds adds up how long the model calls took, replayed ones as recorded; seconds_unknown counts replayed
+    calls recorded before the cache stored durations. tool_calls counts the LangChain tools the model asked for.
     """
     max_calls: int | None = None
     max_input_tokens: int | None = None
@@ -123,12 +126,32 @@ class CostMeter(BaseCallbackHandler):
     cache_hits: int = 0
     replayed_calls: int = 0
     replayed_cost_usd: float = 0.0
+    tool_calls: int = 0
+    model_seconds: float = 0.0
+    seconds_unknown: int = 0
     raise_error: bool = True  # let BudgetExceeded propagate to the caller
     ledger: bool = False      # record live calls in the shared ledger (only the session meter does, to avoid doubles)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _started_at: dict = field(default_factory=dict, repr=False)
 
     def on_chat_model_start(self, serialized, messages, **kwargs) -> None:
         self._before(_estimate_tokens(messages))
+        self._started_at[kwargs.get("run_id")] = time.monotonic()
+
+    def on_tool_start(self, serialized, input_str, **kwargs) -> None:
+        with self._lock:
+            self.tool_calls += 1
+
+    def on_llm_error(self, error, **kwargs) -> None:
+        self._started_at.pop(kwargs.get("run_id"), None)
+
+    def add_seconds(self, seconds: float | None) -> None:
+        """Add the duration of one model call; None means a replayed call recorded without its duration."""
+        with self._lock:
+            if seconds is None:
+                self.seconds_unknown += 1
+            else:
+                self.model_seconds += seconds
 
     def _before(self, est_tokens: int = 0) -> None:
         """Before a model call: raise BudgetExceeded if it would break a limit, else count it as started."""
@@ -189,6 +212,13 @@ class CostMeter(BaseCallbackHandler):
             self.started += 1
 
     def on_llm_end(self, response, **kwargs) -> None:
+        started = self._started_at.pop(kwargs.get("run_id"), None)
+        msgs = [getattr(g, "message", None) for gens in response.generations for g in gens]
+        meta = (getattr(msgs[0], "response_metadata", None) or {}) if msgs and msgs[0] is not None else {}
+        if meta.get(CACHED_FLAG):
+            self.add_seconds(meta.get(SECONDS_KEY))
+        elif started is not None:
+            self.add_seconds(time.monotonic() - started)
         for gens in response.generations:
             for gen in gens:
                 msg = getattr(gen, "message", None)
@@ -202,7 +232,8 @@ class CostMeter(BaseCallbackHandler):
     def reset(self) -> None:
         with self._lock:
             self.calls = self.started = self.input_tokens = self.output_tokens = self.cache_hits = self.replayed_calls = 0
-            self.cost_usd = self.replayed_cost_usd = 0.0
+            self.tool_calls = self.seconds_unknown = 0
+            self.cost_usd = self.replayed_cost_usd = self.model_seconds = 0.0
 
     def summary(self) -> dict:
         return dict(llm_calls=self.calls, input_tokens=self.input_tokens, output_tokens=self.output_tokens,

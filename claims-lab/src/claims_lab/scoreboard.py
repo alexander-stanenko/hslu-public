@@ -118,15 +118,17 @@ def _score(lab: dict, d: ClaimDecision | None, err: str | None) -> dict:
     return row
 
 
-def _row(lab: dict, d, err, meter: CostMeter, t0: float) -> dict:
-    """One scored claim. Calls and cost include replayed calls at their recorded cost, so replayed designs compare fairly."""
+def _row(lab: dict, d, err, meter: CostMeter) -> dict:
+    """One scored claim. Calls, cost and model time include replayed calls as recorded, so replayed designs compare
+    fairly. seconds is the time spent waiting for the model (None if a replayed call was recorded without it)."""
     row = _score(lab, d, err)
-    row.update(llm_calls=meter.calls + meter.replayed_calls, cost_usd=round(meter.cost_usd + meter.replayed_cost_usd, 5),
-               seconds=round(time.time() - t0, 1), replayed_calls=meter.replayed_calls)
+    row.update(llm_calls=meter.calls + meter.replayed_calls, tool_calls=meter.tool_calls,
+               cost_usd=round(meter.cost_usd + meter.replayed_cost_usd, 5),
+               seconds=None if meter.seconds_unknown else round(meter.model_seconds, 1), replayed_calls=meter.replayed_calls)
     return row
 
 
-def _summarise(rows: list[dict], label: str, seconds: float) -> dict:
+def _summarise(rows: list[dict], label: str) -> dict:
     df = pd.DataFrame(rows)
     ran = df[df["error"].isna()]  # claims that failed (e.g. a rate limit) are not counted as wrong decisions
     pay = ran["payout_ok"].dropna()
@@ -135,15 +137,17 @@ def _summarise(rows: list[dict], label: str, seconds: float) -> dict:
                 payout_accuracy=round(pay.mean(), 3) if len(pay) else None, payouts_checked=len(pay),
                 unsafe_approvals=int(df["unsafe_approval"].sum()), issue_recall=round(iss.mean(), 3) if len(iss) else None,
                 errors=int(df["error"].notna().sum()), llm_calls_per_pkg=round(df["llm_calls"].mean(), 1),
+                tool_calls_per_pkg=round(df["tool_calls"].mean(), 1),
                 cost_usd_total=round(df["cost_usd"].sum(), 4), cost_usd_per_pkg=round(df["cost_usd"].mean(), 5),
-                seconds_per_pkg=round(df["seconds"].mean(), 1), wall_seconds=round(seconds, 1),
+                seconds_per_pkg=None if df["seconds"].isna().any() else round(df["seconds"].mean(), 1),
                 replayed=bool(df["replayed_calls"].sum()),
                 to_person=int((ran["predicted"] == "refer_adjuster").sum()),     # work for an adjuster
                 to_person_expected=int((ran["expected"] == "refer_adjuster").sum()))
 
 
-LEGEND = ("correct: same decision as the experienced clerk; payout_ok: right amount (claims to pay only); "
-          "unsafe_approval: paid although it should not have been; llm_calls: model calls for this claim")
+LEGEND = ("correct: the expected decision (the clerk's, from the cheat sheet); payout_ok: right amount (claims to pay "
+          "only); unsafe_approval: paid although it should not have been; llm_calls, tool_calls: model calls and the tools "
+          "the model asked for, for this claim")
 RETRYABLE = ("429", "rate limit", "ratelimit", "timeout", "timed out", "temporarily", "overloaded", "connection")
 
 
@@ -157,7 +161,7 @@ def _report(rows, summary, show: bool):
     RUNS[summary["label"]] = df
     if show:
         s = summary
-        print(f"SCOREBOARD: {s['label']}  ({s['n']} claims)" + (". Replayed: calls and cost as recorded in the live run" if s["replayed"] else ""))
+        print(f"SCOREBOARD: {s['label']}  ({s['n']} claims)" + (". Replayed: calls, cost and time as recorded in the live run" if s["replayed"] else ""))
         if s["errors"]:
             print(f"  Warning: {s['errors']} of {s['n']} claims failed (see the error column), probably the rate limit. They are left out of "
                   f"the accuracy. Wait 30 seconds and run the cell again.")
@@ -165,13 +169,15 @@ def _report(rows, summary, show: bool):
         print(f"  decision accuracy {s['accuracy']:.0%}, payout accuracy {s['payout_accuracy'] if s['payout_accuracy'] is None else format(s['payout_accuracy'], '.0%')}"
               + (f" (of {pay_n} claim{'s' if pay_n != 1 else ''} to pay)" if pay_n else "")
               + f", unsafe approvals {s['unsafe_approvals']}, issues found {s['issue_recall'] if s['issue_recall'] is None else format(s['issue_recall'], '.0%')}")
-        print(f"  {s['llm_calls_per_pkg']} model calls and {s['seconds_per_pkg']} s per claim"
-              + (f", {s['errors']} errors" if s["errors"] else ""))
+        secs = f", {s['seconds_per_pkg']} s of model time" if s["seconds_per_pkg"] is not None else ""
+        print(f"  per claim: {s['llm_calls_per_pkg']} model calls, {s['tool_calls_per_pkg']} tool calls{secs}, "
+              f"${s['cost_usd_per_pkg']:.4f}" + (f"; {s['errors']} errors" if s["errors"] else ""))
         print(f"  sent to a person (refer_adjuster): {s['to_person']} of {s['n'] - s['errors']} claims, "
               f"{s['to_person_expected']} expected")
         try:
             from IPython.display import display
-            cols = ["package", "claim", "expected", "predicted", "correct", "payout_ok", "unsafe_approval", "llm_calls"]
+            cols = ["package", "claim", "expected", "predicted", "correct", "payout_ok", "unsafe_approval", "llm_calls",
+                    "tool_calls"]
             cols += ["error"] if df["error"].notna().any() else []
             from .hslu_palette import HSLU
             warn = HSLU["accents"]["magenta"]["hell1"]
@@ -205,7 +211,6 @@ def scoreboard(system, split: str = "quick", n: int | None = None, ids: list[str
         pkg = load_package(lab["package_id"])
         for attempt in (1, 2):  # one retry after a rate limit or a timeout
             meter = CostMeter(max_calls=RUN_MAX_CALLS, max_input_tokens=60_000)
-            t0 = time.time()
             token = RUN_METERS.set((meter,))  # OpenAI's plain client (notebook 01) reports here; LangChain via the config
             try:
                 d, err = _to_decision(runnable.invoke(pkg, config={"callbacks": [meter]})), None
@@ -216,12 +221,11 @@ def scoreboard(system, split: str = "quick", n: int | None = None, ids: list[str
             if not (attempt == 1 and _retryable(err)):
                 break
             time.sleep(5)
-        return _row(lab, d, err, meter, t0)
+        return _row(lab, d, err, meter)
 
-    t0 = time.time()
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         rows = list(ex.map(run_one, labs))
-    return _report(rows, _summarise(rows, label, time.time() - t0), show)
+    return _report(rows, _summarise(rows, label), show)
 
 
 async def ascoreboard(system, split: str = "quick", n: int | None = None, ids: list[str] | None = None, concurrency: int = 2,
@@ -241,7 +245,6 @@ async def ascoreboard(system, split: str = "quick", n: int | None = None, ids: l
             pkg = load_package(lab["package_id"])
             for attempt in (1, 2):  # one retry after a rate limit or a timeout
                 meter = CostMeter(max_calls=RUN_MAX_CALLS, max_input_tokens=60_000)
-                t0 = time.time()
                 try:
                     d, err = _to_decision(await runnable.ainvoke(pkg, config={"callbacks": [meter]})), None
                 except Exception as e:
@@ -249,11 +252,10 @@ async def ascoreboard(system, split: str = "quick", n: int | None = None, ids: l
                 if not (attempt == 1 and _retryable(err)):
                     break
                 await asyncio.sleep(5)
-            return _row(lab, d, err, meter, t0)
+            return _row(lab, d, err, meter)
 
-    t0 = time.time()
     rows = await asyncio.gather(*(run_one(l) for l in labs))
-    return _report(list(rows), _summarise(list(rows), label, time.time() - t0), show)
+    return _report(list(rows), _summarise(list(rows), label), show)
 
 
 def spot_check(system, *package_ids: str) -> None:
@@ -290,6 +292,7 @@ def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B"
     a, b: the tables returned by scoreboard() or ascoreboard() on the same claims.
     """
     cols = ["package", "claim", "expected", "predicted", "correct", "unsafe_approval", "llm_calls"]
+    cols += ["tool_calls"] if "tool_calls" in a and "tool_calls" in b else []
     m = a[cols].merge(b[cols], on=["package", "claim", "expected"], suffixes=(f" {names[0]}", f" {names[1]}"))
     ca, cb = m[f"correct {names[0]}"], m[f"correct {names[1]}"]
     m["change"] = ["fixed" if (not x and y) else "broken" if (x and not y) else "" for x, y in zip(ca, cb)]
@@ -305,6 +308,8 @@ def scoreboard_history(plot: bool = True, grid: bool = True) -> pd.DataFrame:
         plot_history(df)
         if grid:
             plot_claims_grid(RUNS)
-    cols = ["label", "n", "accuracy", "payout_accuracy", "unsafe_approvals", "to_person", "issue_recall", "llm_calls_per_pkg", "cost_usd_per_pkg",
-            "cost_usd_total", "seconds_per_pkg", "wall_seconds", "replayed", "errors"]
+    cols = ["label", "accuracy", "unsafe_approvals", "payout_accuracy", "issue_recall", "to_person", "llm_calls_per_pkg",
+            "tool_calls_per_pkg", "cost_usd_per_pkg", "seconds_per_pkg"]
+    if len(df) and df["errors"].any():
+        cols.append("errors")
     return df[[c for c in cols if c in df]] if len(df) else df

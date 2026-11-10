@@ -83,9 +83,9 @@ def _design(label, n, runs, correct, unsafe, accuracy, unsafe_approvals, calls, 
             "unsafe_approvals": unsafe_approvals, "llm_calls_per_pkg": calls, "cost_usd_per_pkg": cost}
 
 
-_BAD = _design("vague tools", 8, 4, "3 to 5", "2 to 4", 0.53, 2.8, 2.8, 0.0024)
-_FIXED = _design("described tools", 8, 5, "4 to 5", "1 to 3", 0.57, 1.6, 3.4, 0.0037)
-_CHECKLIST = _design("checklist agent", 8, 4, "6 to 7", "1 to 2", 0.81, 1.5, 3.1, 0.0040)
+_BAD = _design("vague tools", 8, 7, "3 to 5", "2 to 4", 0.52, 3.0, 2.8, 0.0025)
+_FIXED = _design("described tools", 8, 8, "4 to 5", "1 to 3", 0.59, 1.4, 3.3, 0.0036)
+_CHECKLIST = _design("checklist agent", 8, 12, "6 to 7", "1 to 2", 0.82, 1.4, 3.1, 0.0041)
 _MCP = _design("checklist agent over MCP", 8, 3, "7 in every run", "1 in every run", 0.88, 1.0, 3.1, 0.0039)
 _PIPELINE = _design("hybrid pipeline", 8, 4, "7 to 8", "0 to 1", 0.91, 0.3, 2.8, 0.0022)
 _VOTING = _design("pipeline with voting", 8, 3, "7 to 8", "0", 0.96, 0.0, 3.8, 0.0026)
@@ -161,12 +161,12 @@ EVIDENCE = {
                       "referred it; the agent found the reused invoice and declined it, because it had no rule for it."},
     2: {"Routine and complete": "The checklist agent paid PKG-001 right in every run.",
         "Incomplete": "The checklist agent asked for the police report on PKG-005 in every run, but paid PKG-004 (two "
-                      "policies for one name) in 2 of 4 runs.",
+                      "policies for one name) in 5 of 12 runs.",
         "Not covered": "The checklist agent declined PKG-003 in every run.",
         "Needs judgement": "With the cheat sheet in the prompt the agent referred PKG-007, the worn tyres, in every run; "
                            "without it, it declined or paid them.",
         "Suspicious": "Described tools let the agent find the reused invoice on PKG-002; the cheat sheet made it refer "
-                      "the claim instead of declining it."},
+                      "the claim instead of declining it, in 11 of 12 runs."},
     3: {"Incomplete": "Over MCP a server can ask a person for a missing fact: with the answer P-1004 the agent continued "
                       "PKG-004 to a payout (elicitation).",
         "Suspicious": "A partner server's tool description told the agent to skip the invoice checks, and it paid PKG-002 "

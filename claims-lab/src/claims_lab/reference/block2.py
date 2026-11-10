@@ -14,7 +14,7 @@ from langchain.agents.middleware import SummarizationMiddleware
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from .. import tools as T
+from .. import tools
 from ..data import Package
 from ..models import get_model, run_config
 from ..schemas import ClaimDecision
@@ -43,31 +43,31 @@ BAD_PROMPT = "You are a claims handler. Decide the claim."
 @tool
 def get_data(id: str) -> str:
     """Gets data."""
-    return json.dumps(T.lookup_policy(id))
+    return json.dumps(tools.lookup_policy(id))
 
 
 @tool
 def history(x: str) -> str:  # vague on purpose, but typed: OpenAI rejects tool arguments without a type
     """History."""
-    return json.dumps(T.get_claim_history(str(x)))
+    return json.dumps(tools.get_claim_history(str(x)))
 
 
 @tool
 def invoices(n: str) -> str:
     """Invoices."""
-    return json.dumps(T.search_claims_by_invoice(n))
+    return json.dumps(tools.search_claims_by_invoice(n))
 
 
 @tool
 def search(q: str) -> str:
     """Search."""
-    return json.dumps(T.search_terms(q))
+    return json.dumps(tools.search_terms(q))
 
 
 @tool
 def calc(a: float, b: float) -> str:
     """Calculates."""
-    return json.dumps(T.calc_payout(a, b))
+    return json.dumps(tools.calc_payout(a, b))
 
 
 BAD_TOOLS = [get_data, history, invoices, search, calc]
@@ -82,35 +82,35 @@ def lookup_policy(policy_id: str) -> str:
     """Look up a policy by its number (format 'P-1001'). Returns the holder, the car and its plate, the kinds of
     damage the policy covers ('covers'), the deductible in CHF and the dates between which the policy is valid.
     Use it first for every claim."""
-    return json.dumps(T.lookup_policy(policy_id))
+    return json.dumps(tools.lookup_policy(policy_id))
 
 
 @tool
 def get_claim_history(policy_id: str) -> str:
     """List the earlier claims on a policy (policy number 'P-1001'): date, kind of damage, amount in CHF, invoice
     number, garage and status. Use it to see whether this damage or this invoice was claimed before."""
-    return json.dumps(T.get_claim_history(policy_id))
+    return json.dumps(tools.get_claim_history(policy_id))
 
 
 @tool
 def search_claims_by_invoice(invoice_no: str) -> str:
     """Check whether an invoice number (e.g. 'GH-3318') was already used in an earlier claim, on any policy.
     An empty list means the invoice number is new; any entry means it was used before."""
-    return json.dumps(T.search_claims_by_invoice(invoice_no))
+    return json.dumps(tools.search_claims_by_invoice(invoice_no))
 
 
 @tool
 def search_terms(query: str) -> str:
     """Search Lakeside's general terms for car insurance, e.g. 'what is never covered' or 'documents for a theft'.
     Returns the 2 most relevant sections with their number (e.g. '§3')."""
-    return json.dumps(T.search_terms(query))
+    return json.dumps(tools.search_terms(query))
 
 
 @tool
 def calc_payout(amount_chf: float, deductible_chf: float) -> str:
     """Payout in CHF for a claim to pay: the invoice amount minus the policy's deductible, never below 0.
     Always use it instead of calculating yourself."""
-    return json.dumps(T.calc_payout(amount_chf, deductible_chf))
+    return json.dumps(tools.calc_payout(amount_chf, deductible_chf))
 
 
 FIXED_TOOLS = [lookup_policy, get_claim_history, search_claims_by_invoice, search_terms, calc_payout]
@@ -126,7 +126,7 @@ def fixed_tools_agent(llm=None):
 def find_policies(name: str | None = None, plate: str | None = None) -> str:
     """Find policies when the policy number is unknown: by the holder's name (or part of it) and/or the car's plate
     (e.g. 'LU 248 113'). Returns every matching policy; more than one match means the policy is not identified yet."""
-    return json.dumps(T.find_policies(name, plate))
+    return json.dumps(tools.find_policies(name, plate))
 
 
 FINAL_TOOLS = FIXED_TOOLS + [find_policies]
@@ -149,6 +149,15 @@ def final_agent(llm=None, middleware=()):
     """Exercise C1 solution, and the baseline from notebook 02 carried into notebook 03."""
     return create_agent(llm or get_model(), FINAL_TOOLS, system_prompt=PLAN_PROMPT, response_format=ClaimDecision,
                         middleware=list(middleware))
+
+
+def limited_agent(llm=None, tools=None, system_prompt: str | None = None):
+    """Notebook 02, Extra 1: the checklist agent with at most two model calls per run; at the limit the run ends with a
+    message instead of an error. Used when the participant's limited_agent is not built."""
+    from langchain.agents.middleware import ModelCallLimitMiddleware
+    return create_agent(llm or get_model(), tools or FINAL_TOOLS, system_prompt=system_prompt or PLAN_PROMPT,
+                        response_format=ClaimDecision,
+                        middleware=[ModelCallLimitMiddleware(run_limit=2, exit_behavior="end")])
 
 
 # ------------------------------------------------------------------ Stretch
@@ -234,14 +243,17 @@ def check_tools(tools, reference=None, name: str = "my_tools") -> list:
 
 def spot_check_steps(agent, *package_ids: str, max_steps: int = 12) -> dict:
     """Like `cl.spot_check`, and it also shows how the agent worked on each claim: model calls, output tokens per call
-    (reasoning tokens count as output), the tools it called and the cost. Returns {package_id: agent result}."""
-    from ..costs import CACHED_FLAG, price_for
+    (reasoning tokens count as output), the tools it called, the cost and the time spent waiting for the model (as
+    recorded, in a replay). Returns {package_id: agent result}."""
+    from ..costs import CACHED_FLAG, CostMeter, price_for
     from ..data import label, load_package
     results = {}
     for pid in package_ids:
         expected = label(pid)["expected"]["decision"]
+        meter = CostMeter()
         try:
-            result = run(agent, max_steps)(load_package(pid))
+            result = agent.invoke({"messages": [("user", load_package(pid).text())]},
+                                  config=run_config(max_steps, callbacks=[meter]))
             d = result.get("structured_response")
             got, why = (d.decision, d.reasoning) if d is not None else ("no decision", "the run ended without a decision")
         except Exception as e:  # noqa: BLE001 - show the problem, keep going
@@ -255,7 +267,8 @@ def spot_check_steps(agent, *package_ids: str, max_steps: int = 12) -> dict:
                 usd += m.usage_metadata.get("input_tokens", 0) * pin / 1e6 + m.usage_metadata.get("output_tokens", 0) * pout / 1e6
         used = [tc["name"] for m in ais for tc in m.tool_calls if not tc["name"][:1].isupper()]  # not the ClaimDecision tool
         print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {len(ais)} model calls, "
-              f"{out / max(1, len(ais)):.0f} output tokens per call, ${usd:.4f}")
+              f"{out / max(1, len(ais)):.0f} output tokens per call, ${usd:.4f}"
+              + ("" if meter.seconds_unknown else f", {meter.model_seconds:.1f} s"))
         print(f"     tools: {', '.join(used) or 'none'}\n     reason:\n{indented(why, 7)}\n")
         results[pid] = result
     return results

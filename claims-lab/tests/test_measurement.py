@@ -13,7 +13,8 @@ def test_replayed_run_reports_the_recorded_calls(monkeypatch, tmp_path):
         again = cl.scoreboard(block1.chatbot, ids=IDS, label="replayed", show=False)
     assert live["replayed_calls"].sum() == 0 and again["replayed_calls"].sum() == len(IDS)
     assert list(again["llm_calls"]) == list(live["llm_calls"]) == [1, 1, 1]  # not 0: the recorded calls count
-    assert cl.scoreboard_history(plot=False).iloc[-1]["replayed"]
+    last = cl.scoreboard_history(plot=False).iloc[-1]
+    assert "replayed" not in last.index and last["seconds_per_pkg"] >= 0  # the replay reports the recorded time
 
 
 def test_a_rate_limit_is_retried_once(monkeypatch):

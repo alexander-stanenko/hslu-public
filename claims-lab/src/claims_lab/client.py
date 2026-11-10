@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import json
 import os
+import time
 
-from .costs import RUN_METERS, SESSION_METER
+from .costs import RUN_METERS, SECONDS_KEY, SESSION_METER
 
 _INFO: dict[int, tuple] = {}  # id(object) -> (object, (model, input tokens, output tokens, replayed)), for show_trace
 
@@ -63,6 +64,7 @@ def _request(kind: str, kwargs: dict) -> dict:
 
 def _rebuild(kind: str, kwargs: dict, data: dict):
     from openai.types.chat import ChatCompletion, ParsedChatCompletion
+    data = {k: v for k, v in data.items() if k != SECONDS_KEY}   # the recorded duration is ours, not OpenAI's
     rf = kwargs.get("response_format")
     if kind == "parse" and isinstance(rf, type):
         return ParsedChatCompletion[rf].model_validate(data)
@@ -92,20 +94,25 @@ class _Completions:
         cache = cache if isinstance(cache, SQLiteReplayCache) else None
         key, llm = json.dumps(request, sort_keys=True), f"openai-client:{kwargs.get('model')}"
         data = cache.lookup_raw(key, llm) if cache else None
+        seconds = None
         if data is not None:
             response, replayed = _rebuild(kind, kwargs, data), True
+            seconds = data.get(SECONDS_KEY) if isinstance(data, dict) else None
         else:
             SESSION_METER._before(len(json.dumps(request.get("messages", []))) // 4)
             for meter in RUN_METERS.get():
                 meter._before()
+            started = time.monotonic()
             response, replayed = self._owner._send(kind, kwargs), False
+            seconds = round(time.monotonic() - started, 2)
             if cache:
-                cache.update_raw(key, llm, response.model_dump(mode="json", warnings=False))
+                cache.update_raw(key, llm, {**response.model_dump(mode="json", warnings=False), SECONDS_KEY: seconds})
         u = response.usage
         info = (response.model, u.prompt_tokens if u else 0, u.completion_tokens if u else 0, replayed)
         SESSION_METER._record(*info)
         for meter in RUN_METERS.get():
             meter._record(*info)
+            meter.add_seconds(seconds)
         _remember(response, info)
         _remember(response.choices[0].message, info)
         return response

@@ -32,7 +32,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send, interrupt
 from pydantic import BaseModel, Field
 
-from .. import tools as T
+from .. import tools
 from ..data import Package, label, load_package
 from ..models import get_model, run_config
 from ..schemas import ClaimDecision, ClaimFacts, DocInfo
@@ -118,9 +118,9 @@ def rule_checks(state: ClaimState) -> dict:
     # 1 policy known? By number, or by name and plate with exactly one match
     pid = f.policy_id
     if not pid and f.customer_name:
-        matches = T.find_policies(name=f.customer_name, plate=f.plate)
+        matches = tools.find_policies(name=f.customer_name, plate=f.plate)
         pid = matches[0]["policy_id"] if len(matches) == 1 else None
-    policy = T.lookup_policy(pid) if pid else {"error": "No policy number, and name and plate do not identify one policy."}
+    policy = tools.lookup_policy(pid) if pid else {"error": "No policy number, and name and plate do not identify one policy."}
     if "error" in policy:
         return stop("request_info", policy["error"], missing="policy_id")
     # 2 covered on that day?
@@ -137,7 +137,7 @@ def rule_checks(state: ClaimState) -> dict:
         return {"policy": policy, "findings": [{"decision": "request_info", "missing": m, "reason": f"Missing: {m}."} for m in missing]}
     # 4 a reused invoice; and the limit
     flags = []
-    if f.invoice_no and T.search_claims_by_invoice(f.invoice_no):
+    if f.invoice_no and tools.search_claims_by_invoice(f.invoice_no):
         flags.append(("duplicate_invoice", f"Invoice {f.invoice_no} was already used in an earlier claim."))
     if (f.amount_chf or 0) > FAST_TRACK_LIMIT_CHF:
         flags.append(("above_fast_track_limit", f"CHF {f.amount_chf:,.0f} is above the fast-track limit of CHF {FAST_TRACK_LIMIT_CHF:,}."))
@@ -233,7 +233,7 @@ def decide_by_rule(state: ClaimState) -> dict:
 def fast_track(state: ClaimState) -> dict:
     """Code: the payout is computed, never estimated by a model (guideline §2, step 7)."""
     f, policy = state["facts"], state["policy"]
-    payout = T.calc_payout(f.amount_chf, policy["deductible_chf"])
+    payout = tools.calc_payout(f.amount_chf, policy["deductible_chf"])
     return {"decision": ClaimDecision(decision="fast_track", payout_chf=payout,
                                       reasoning=f"All rules passed and no signs that need judgement. Covered {f.damage} claim of "
                                                 f"CHF {f.amount_chf:,.2f}; payout after the deductible CHF {payout:,.2f}.")}

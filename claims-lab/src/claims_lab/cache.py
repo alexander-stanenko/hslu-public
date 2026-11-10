@@ -11,6 +11,7 @@ import re
 import os
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from importlib.resources import files
 from pathlib import Path
@@ -20,7 +21,7 @@ from langchain_core.globals import get_llm_cache, set_llm_cache
 from langchain_core.messages import message_to_dict, messages_from_dict
 from langchain_core.outputs import ChatGeneration, Generation
 
-from .costs import CACHED_FLAG
+from .costs import CACHED_FLAG, SECONDS_KEY
 
 
 def _key(prompt: str) -> str:
@@ -76,13 +77,21 @@ class SQLiteReplayCache(BaseCache):
         self._conn = sqlite3.connect(self.path, check_same_thread=False)
         self._conn.execute("CREATE TABLE IF NOT EXISTS cache(prompt TEXT, llm TEXT, value TEXT, PRIMARY KEY(prompt, llm))")
         self._conn.commit()
+        self._missed_at: dict = {}   # request → when lookup() missed it, so update() can store how long the call took
+        self._backfill: dict = {}    # request → its recorded answer (CLAIMS_LAB_REPLAY_BACKFILL_SECONDS)
 
     def lookup(self, prompt: str, llm_string: str):
         with self._lock:
             row = self._conn.execute("SELECT value FROM cache WHERE prompt=? AND llm=?", (_key(prompt), _llm_key(llm_string))).fetchone()
+        if row is not None and os.environ.get("CLAIMS_LAB_REPLAY_BACKFILL_SECONDS") and SECONDS_KEY not in row[0]:
+            # Maintenance: a recording made before durations were stored. Let this request run live once, to time it;
+            # update() then stores the recorded answer with the duration and hands that answer back.
+            self._backfill[(_key(prompt), _llm_key(llm_string))] = row[0]
+            row = None
         if row is None:
             if os.environ.get("CLAIMS_LAB_REPLAY_ONLY"):  # the pre-lecture check: a demo cell must not call the model
                 raise RuntimeError("replay miss: this request is not in the recording")
+            self._missed_at[(_key(prompt), _llm_key(llm_string))] = time.monotonic()
             return None
         out = []
         for g in json.loads(row[0]):
@@ -96,6 +105,17 @@ class SQLiteReplayCache(BaseCache):
 
     def update(self, prompt: str, llm_string: str, return_val) -> None:
         data = [{"message": message_to_dict(g.message)} if isinstance(g, ChatGeneration) else {"text": g.text} for g in return_val]
+        recorded = self._backfill.pop((_key(prompt), _llm_key(llm_string)), None)
+        if recorded is not None:   # keep the recorded answer, and return it instead of the new one (same list object)
+            data = json.loads(recorded)
+            return_val[:] = [ChatGeneration(message=messages_from_dict([g["message"]])[0]) if "message" in g
+                             else Generation(text=g["text"]) for g in data]
+        missed = self._missed_at.pop((_key(prompt), _llm_key(llm_string)), None)
+        if missed is not None:   # the duration of the live call, so a replay can report it (scoreboard: model time)
+            for d in data:
+                if "message" in d:
+                    meta = d["message"]["data"].setdefault("response_metadata", {})
+                    meta[SECONDS_KEY] = round(time.monotonic() - missed, 2)
         with self._lock:
             self._conn.execute("INSERT OR REPLACE INTO cache VALUES (?,?,?)", (_key(prompt), _llm_key(llm_string), json.dumps(data)))
             self._conn.commit()
