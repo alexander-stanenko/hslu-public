@@ -1,7 +1,7 @@
 """The thread of the day inside the notebooks: where we are, the result of a block, the picks table and figures.
 
     cl.where_we_are(2)      # the six layers with notebook 02 highlighted, the day's question, what notebook 01 left open
-    cl.result_card(2)       # this session's scoreboard runs next to our recorded runs, and what to tell your team
+    cl.result_card(2)       # this session's scoreboard runs next to our recorded runs, and the notebook in three sentences
     cl.save_picks({...})    # notebook 01, Exercise D: your pick per kind of claim
     cl.show_picks(4)        # your picks next to what the measurements of notebooks 01 to 04 say
     cl.figure("mcp_architecture")
@@ -264,8 +264,8 @@ def as_runs(df):
 
 
 def result_card(block: int) -> None:
-    """End of every notebook: your scoreboard runs of this session next to our recorded runs, and three sentences you
-    could tell your team."""
+    """End of every notebook: your scoreboard runs of this session next to our recorded runs, and the notebook in three
+    sentences."""
     from .scoreboard import HISTORY
     from .style import plot_history
     import pandas as pd
@@ -289,7 +289,7 @@ def result_card(block: int) -> None:
             print(table.to_string())
     tell = BLOCKS[block]["tell"]
     if tell:
-        _markdown(f"**Notebook {block:02d} in three sentences, for your team:**\n\n" + "\n".join(f"{i}. {t}" for i, t in enumerate(tell, 1)))
+        _markdown(f"**Notebook {block:02d} in three sentences:**\n\n" + "\n".join(f"{i}. {t}" for i, t in enumerate(tell, 1)))
 
 
 def _picks_file():

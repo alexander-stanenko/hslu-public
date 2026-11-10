@@ -14,53 +14,78 @@ def offline(monkeypatch):
 
 
 class _NoModel:
-    """The notebook's `bound`; the checks must never call it."""
+    """The notebook's `client`; the checks must never call it."""
 
-    def invoke(self, *a, **k):
+    def __getattr__(self, name):
         raise AssertionError("the check called the real model")
 
 
 def _notebook(body: str):
-    """Define run_loop the way notebook 01 does: in a namespace with `bound`, `agent_tools` and `SYSTEM_PROMPT`."""
-    ns = {"bound": _NoModel(), "agent_tools": block1.AGENT_TOOLS, "SYSTEM_PROMPT": block1.SYSTEM_PROMPT}
-    exec("from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage\n" + textwrap.dedent(body), ns)
+    """Define run_loop the way notebook 01 does: in a namespace with `client`, `TOOLS`, `tools_by_name`, `MODEL`
+    and `SYSTEM_PROMPT`."""
+    ns = {"client": _NoModel(), "TOOLS": block1.TOOLS, "tools_by_name": block1.TOOLS_BY_NAME, "MODEL": block1.MODEL,
+          "SYSTEM_PROMPT": block1.SYSTEM_PROMPT, "cl": cl}
+    exec("import json\n" + textwrap.dedent(body), ns)
     return ns
 
 
 LOOP_HEAD = """
 def run_loop(pkg, max_steps=8):
-    tools_by_name = {f.__name__: f for f in agent_tools}
-    messages = [SystemMessage(SYSTEM_PROMPT), HumanMessage(pkg.text())]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": pkg.text()}]
     for step in range(max_steps):
-        ai = bound.invoke(messages)
-        messages.append(ai)
+        response = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS)
+        reply = response.choices[0].message
+        messages.append(reply)
 """
 FINISHED = LOOP_HEAD + """
-        if not ai.tool_calls:
+        if not reply.tool_calls:
             return messages
-        for call in ai.tool_calls:
-            result = tools_by_name[call["name"]](**call["args"])
-            messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
+        for call in reply.tool_calls:
+            args = json.loads(call.function.arguments)
+            result = tools_by_name[call.function.name](**args)
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
     return messages
 """
 EMPTY = LOOP_HEAD + """
-        for call in ai.tool_calls:
+        for call in reply.tool_calls:
             pass
     return messages
 """
 NO_STOP = LOOP_HEAD + """
-        for call in ai.tool_calls:
-            result = tools_by_name[call["name"]](**call["args"])
-            messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
+        for call in reply.tool_calls or []:
+            args = json.loads(call.function.arguments)
+            result = tools_by_name[call.function.name](**args)
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+    return messages
+"""
+GUARDED = """
+def run_loop_guarded(pkg, max_steps=8, max_usd=0.01):
+    meter = cl.CostMeter(max_usd=max_usd)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": pkg.text()}]
+    try:
+        for step in range(max_steps):
+            meter.check()
+            response = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS)
+            %s
+            reply = response.choices[0].message
+            messages.append(reply)
+            if not reply.tool_calls:
+                break
+            for call in reply.tool_calls:
+                args = json.loads(call.function.arguments)
+                messages.append({"role": "tool", "tool_call_id": call.id,
+                                 "content": tools_by_name[call.function.name](**args)})
+    except cl.BudgetExceeded as e:
+        print("stopped:", e)
     return messages
 """
 
 
 def test_finished_loop_is_kept_and_the_model_is_restored(capsys):
     ns = _notebook(FINISHED)
-    model = ns["bound"]
+    model = ns["client"]
     assert block1.check_my_loop(ns["run_loop"]) is ns["run_loop"]
-    assert ns["bound"] is model
+    assert ns["client"] is model
     assert "passes our test" in capsys.readouterr().out
 
 
@@ -103,11 +128,36 @@ def test_invoice_check_finished_empty_and_wrong():
     ("**Decision:** decline — not covered", "decline"),
     ("I recommend we fast-track this claim; payout CHF 650.", "fast_track"),
     ("This claim should be referred to an adjuster.", "refer_adjuster"),
-    ("Stopped after 8 steps without a decision.", "no decision (step limit)"),
     ("I am not sure.", "unclear"),
 ])
 def test_outcome_is_read_from_the_final_answer(text, expected):
-    assert block1.outcome([AIMessage(content=text)]) == expected
+    assert block1.outcome([{"role": "assistant", "content": text}]) == expected
+    assert block1.outcome([AIMessage(content=text)]) == expected       # LangChain's messages too
+
+
+def test_outcome_of_a_run_stopped_before_the_answer():
+    call = {"id": "c1", "type": "function", "function": {"name": "lookup_policy", "arguments": "{}"}}
+    assert block1.outcome([{"role": "assistant", "content": None, "tool_calls": [call]}]).startswith("no answer")
+    assert block1.outcome([{"role": "tool", "tool_call_id": "c1", "content": "{}"}]).startswith("no answer")
+
+
+def test_guarded_loop_finished_is_kept(capsys):
+    ns = _notebook(GUARDED % "meter.add(response)")
+    assert block1.check_guarded_loop(ns["run_loop_guarded"]) is ns["run_loop_guarded"]
+    assert "passes our test" in capsys.readouterr().out
+    assert isinstance(ns["client"], _NoModel)
+
+
+def test_guarded_loop_without_add_falls_back(capsys):
+    ns = _notebook(GUARDED % "pass")
+    assert block1.check_guarded_loop(ns["run_loop_guarded"]) is block1.run_loop_guarded
+    assert "second call" in capsys.readouterr().out
+
+
+def test_guarded_loop_without_except_falls_back(capsys):
+    ns = _notebook((GUARDED % "meter.add(response)").replace("cl.BudgetExceeded", "KeyError"))
+    assert block1.check_guarded_loop(ns["run_loop_guarded"]) is block1.run_loop_guarded
+    assert "does not catch cl.BudgetExceeded" in capsys.readouterr().out
 
 
 def test_a_check_run_again_on_our_version_says_it_is_ours(capsys):

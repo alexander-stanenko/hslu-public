@@ -93,6 +93,19 @@ class SQLiteReplayCache(BaseCache):
             self._conn.execute("INSERT OR REPLACE INTO cache VALUES (?,?,?)", (_key(prompt), _llm_key(llm_string), json.dumps(data)))
             self._conn.commit()
 
+    def lookup_raw(self, key: str, llm: str):
+        """A recorded answer of OpenAI's plain client (notebook 01), as JSON data, or None."""
+        with self._lock:
+            row = self._conn.execute("SELECT value FROM cache WHERE prompt=? AND llm=?", (key, llm)).fetchone()
+        if row is None and os.environ.get("CLAIMS_LAB_REPLAY_ONLY"):
+            raise RuntimeError("replay miss: this request is not in the recording")
+        return json.loads(row[0]) if row else None
+
+    def update_raw(self, key: str, llm: str, value) -> None:
+        with self._lock:
+            self._conn.execute("INSERT OR REPLACE INTO cache VALUES (?,?,?)", (key, llm, json.dumps(value)))
+            self._conn.commit()
+
     def clear(self, **kwargs) -> None:
         with self._lock:
             self._conn.execute("DELETE FROM cache")

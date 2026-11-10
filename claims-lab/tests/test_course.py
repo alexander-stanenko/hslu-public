@@ -31,7 +31,7 @@ def test_result_card_shows_recorded_runs_and_mine(capsys):
     cl.scoreboard(block1.chatbot, ids=["PKG-001"], label="mine", show=False)
     cl.result_card(4)
     out = capsys.readouterr().out
-    assert "hybrid pipeline" in out and "mine" in out and "for your team" in out
+    assert "hybrid pipeline" in out and "mine" in out and "in three sentences:" in out
 
 
 def test_picks_are_saved_merged_and_shown_with_evidence(capsys):

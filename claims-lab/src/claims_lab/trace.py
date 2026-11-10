@@ -31,11 +31,13 @@ def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
     """Print an agent run step by step.
 
     Args:
-        result: the dict returned by agent.invoke(...) (with a "messages" key), or a list of messages.
+        result: the dict returned by agent.invoke(...) (with a "messages" key), or a list of messages: LangChain's,
+            or notebook 01's (dicts and the replies of OpenAI's client).
         max_chars: truncate long contents to this many characters (the final answer is shown in full).
         chart: also draw the input and output tokens of each model call.
     """
-    messages = result["messages"] if isinstance(result, dict) else result
+    from .client import to_langchain
+    messages = to_langchain(result["messages"] if isinstance(result, dict) and "messages" in result else result)
     calls = tin = tout = replayed = 0
     cost = 0.0
     step = 0

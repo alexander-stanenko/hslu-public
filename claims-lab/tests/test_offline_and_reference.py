@@ -44,12 +44,45 @@ def test_reference_workflow():
 
 def test_reference_agent_loop_stops_and_answers():
     messages = block1.run_loop(cl.load_package("PKG-002"), max_steps=8)
-    assert messages[-1].type == "ai" and not messages[-1].tool_calls
-    assert len([m for m in messages if m.type == "ai"]) <= 8
-    called = {c["id"]: c["name"] for m in messages if m.type == "ai" for c in m.tool_calls}
-    assert any(m.type == "tool" and called[m.tool_call_id] == "search_claims_by_invoice" and "P-1002" in m.content
-               for m in messages)
+    assert messages[-1].role == "assistant" and not messages[-1].tool_calls      # the reply object of OpenAI's client
+    replies = [m for m in messages if not isinstance(m, dict)]
+    assert len(replies) <= 8
+    called = {c.id: c.function.name for m in replies for c in m.tool_calls or []}
+    assert any(isinstance(m, dict) and m["role"] == "tool" and called[m["tool_call_id"]] == "search_claims_by_invoice"
+               and "P-1002" in m["content"] for m in messages)
+    assert block1.outcome(messages) == "refer_adjuster"
     assert isinstance(block1.agent(cl.load_package("PKG-002")), cl.ClaimDecision)
+
+
+def test_reference_agent_loop_cut_short_has_no_answer():
+    messages = block1.run_loop(cl.load_package("PKG-002"), max_steps=1)
+    assert block1.outcome(messages).startswith("no answer")
+
+
+def test_chatbot_and_workflow_use_openais_client():
+    from openai.types.chat import ParsedChatCompletion
+    client = cl.get_client()
+    response = client.chat.completions.parse(model=block1.MODEL, messages=[{"role": "user", "content": "Decide: "
+                                             + cl.load_package("PKG-001").text()}], response_format=cl.ClaimDecision)
+    assert isinstance(response, ParsedChatCompletion) and isinstance(response.choices[0].message.parsed, cl.ClaimDecision)
+    assert isinstance(block1.chatbot(cl.load_package("PKG-001")), cl.ClaimDecision)
+
+
+def test_client_answers_are_replayed(tmp_path):
+    pkg = cl.load_package("PKG-002")
+    with cl.replay(path=tmp_path / "replay.db"):
+        first = block1.run_loop(pkg)
+    with cl.replay(path=tmp_path / "replay.db"):
+        again = block1.run_loop(pkg)
+    assert [m.model_dump() if not isinstance(m, dict) else m for m in first] == \
+           [m.model_dump() if not isinstance(m, dict) else m for m in again]
+    from claims_lab.client import info_of
+    assert info_of(again[-1])[3] is True        # replayed
+
+
+def test_scoreboard_counts_each_client_call_once():
+    df = cl.scoreboard(block1.agent, ids=["PKG-002"], show=False, label="offline agent")
+    assert df["llm_calls"].iloc[0] == 5        # 4 steps of the loop, 1 call that fills in the ClaimDecision
 
 
 def test_reference_systems_run_on_the_scoreboard():

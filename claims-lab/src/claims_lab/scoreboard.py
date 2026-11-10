@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 from langchain_core.runnables import RunnableLambda
 
-from .costs import RUN_MAX_CALLS, CostMeter
+from .costs import RUN_MAX_CALLS, RUN_METERS, CostMeter
 from .data import Package, labels, load_package
 from .schemas import ClaimDecision
 from .trace import indented
@@ -206,10 +206,13 @@ def scoreboard(system, split: str = "quick", n: int | None = None, ids: list[str
         for attempt in (1, 2):  # one retry after a rate limit or a timeout
             meter = CostMeter(max_calls=RUN_MAX_CALLS, max_input_tokens=60_000)
             t0 = time.time()
+            token = RUN_METERS.set((meter,))  # OpenAI's plain client (notebook 01) reports here; LangChain via the config
             try:
                 d, err = _to_decision(runnable.invoke(pkg, config={"callbacks": [meter]})), None
             except Exception as e:  # keep going; the error is shown in the table
                 d, err = None, f"{type(e).__name__}: {str(e)[:120]}"
+            finally:
+                RUN_METERS.reset(token)
             if not (attempt == 1 and _retryable(err)):
                 break
             time.sleep(5)

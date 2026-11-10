@@ -128,21 +128,59 @@ class CostMeter(BaseCallbackHandler):
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def on_chat_model_start(self, serialized, messages, **kwargs) -> None:
+        self._before(_estimate_tokens(messages))
+
+    def _before(self, est_tokens: int = 0) -> None:
+        """Before a model call: raise BudgetExceeded if it would break a limit, else count it as started."""
         if self.ledger:
             ledger_check()
         with self._lock:
-            if self.max_calls is not None and self.started >= self.max_calls:
-                raise BudgetExceeded(f"Stopped: this run already made {self.started} model calls (limit {self.max_calls}). "
-                                     f"The agent is probably stuck in a loop.")
-            if self.max_usd is not None and self.cost_usd >= self.max_usd:
-                limit = f"{self.max_usd:.2f}" if self.max_usd >= 0.01 else f"{self.max_usd:.4f}"
-                raise BudgetExceeded(f"Stopped: spending limit of ${limit} reached (spent ${self.cost_usd:.4f}). "
-                                     f"Tell the instructor if you need more.")
-            est = _estimate_tokens(messages)
-            if self.max_input_tokens is not None and est > self.max_input_tokens:
-                raise BudgetExceeded(f"Stopped: the next request would send ~{est:,} tokens (limit {self.max_input_tokens:,}). "
-                                     f"The conversation has grown too long.")
+            self._check_limits(est_tokens)
             self.started += 1
+
+    def _check_limits(self, est_tokens: int = 0) -> None:
+        if self.max_calls is not None and self.started >= self.max_calls:
+            raise BudgetExceeded(f"Stopped: this run already made {self.started} model calls (limit {self.max_calls}). "
+                                 f"The agent is probably stuck in a loop.")
+        if self.max_usd is not None and self.cost_usd >= self.max_usd:
+            limit = f"{self.max_usd:.2f}" if self.max_usd >= 0.01 else f"{self.max_usd:.4f}"
+            raise BudgetExceeded(f"Stopped: spending limit of ${limit} reached (spent ${self.cost_usd:.4f}). "
+                                 f"Tell the instructor if you need more.")
+        if self.max_input_tokens is not None and est_tokens > self.max_input_tokens:
+            raise BudgetExceeded(f"Stopped: the next request would send ~{est_tokens:,} tokens (limit {self.max_input_tokens:,}). "
+                                 f"The conversation has grown too long.")
+
+    def check(self) -> None:
+        """Raise BudgetExceeded if this meter's limit is reached. Call it before each model call (notebook 01)."""
+        with self._lock:
+            self._check_limits()
+
+    def add(self, response) -> None:
+        """Count one answer of OpenAI's client (a response from client.chat.completions.create or .parse):
+        its tokens and what they cost. Replayed answers count as replayed (notebook 01)."""
+        from .client import usage_of
+        model, i, o, cached = usage_of(response)
+        with self._lock:
+            self.started += 1
+        self._record(model, i, o, cached)
+
+    def _record(self, model: str | None, i: int, o: int, cached: bool) -> float:
+        """Add one finished call; returns its cost in USD."""
+        pin, pout = price_for(model, i)
+        usd = i * pin / 1e6 + o * pout / 1e6
+        with self._lock:
+            if cached:  # replayed: free now, but report what it cost when recorded
+                self.cache_hits += 1
+                self.replayed_calls += 1
+                self.replayed_cost_usd += usd
+                return usd
+            self.calls += 1
+            self.input_tokens += i
+            self.output_tokens += o
+            self.cost_usd += usd
+        if self.ledger:
+            ledger_add("chat", model, i, o, usd)
+        return usd
 
     def on_llm_start(self, serialized, prompts, **kwargs) -> None:  # non-chat models
         with self._lock:
@@ -158,21 +196,8 @@ class CostMeter(BaseCallbackHandler):
                     continue
                 meta = getattr(msg, "response_metadata", {}) or {}
                 usage = getattr(msg, "usage_metadata", None) or {}
-                i, o = usage.get("input_tokens", 0), usage.get("output_tokens", 0)
-                pin, pout = price_for(meta.get("model_name") or meta.get("model"), i)
-                usd = i * pin / 1e6 + o * pout / 1e6
-                with self._lock:
-                    if meta.get(CACHED_FLAG):  # replayed: free now, but report what it cost when recorded
-                        self.cache_hits += 1
-                        self.replayed_calls += 1
-                        self.replayed_cost_usd += usd
-                        continue
-                    self.calls += 1
-                    self.input_tokens += i
-                    self.output_tokens += o
-                    self.cost_usd += usd
-                if self.ledger:
-                    ledger_add("chat", meta.get("model_name") or meta.get("model"), i, o, usd)
+                self._record(meta.get("model_name") or meta.get("model"), usage.get("input_tokens", 0),
+                             usage.get("output_tokens", 0), bool(meta.get(CACHED_FLAG)))
 
     def reset(self) -> None:
         with self._lock:
@@ -193,6 +218,12 @@ class CostMeter(BaseCallbackHandler):
 # of any single request. Defaults are far above normal course use (~$0.10 per notebook, ~10k tokens per request).
 SESSION_METER = CostMeter(max_usd=float(os.environ.get("CLAIMS_LAB_SESSION_BUDGET_USD", 2.0)),
                           max_input_tokens=int(os.environ.get("CLAIMS_LAB_MAX_INPUT_TOKENS", 60_000)), ledger=True)
+
+# Meters of the current scoreboard run. LangChain models get theirs through the run config; OpenAI's plain client
+# (notebook 01, claims_lab.client) has no callbacks, so it reports every call to the meters listed here as well.
+import contextvars  # noqa: E402
+
+RUN_METERS: contextvars.ContextVar[tuple] = contextvars.ContextVar("claims_lab_run_meters", default=())
 
 # Per-run limits used by the scoreboard (one claim package = one run).
 RUN_MAX_CALLS = int(os.environ.get("CLAIMS_LAB_RUN_MAX_CALLS", 25))
