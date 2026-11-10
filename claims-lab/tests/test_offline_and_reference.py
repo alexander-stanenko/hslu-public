@@ -146,3 +146,11 @@ def test_spot_check_and_context_breakdown(capsys):
     parts = cl.context_breakdown(result, tools=block2.FINAL_TOOLS, system_prompt=block2.PLAN_PROMPT)
     assert parts["tool definitions"] > 0 and parts["system prompt"] > 0 and parts["tool results"] > 0
 
+
+
+def test_replay_key_ignores_docstring_indentation():
+    """Python 3.13+ strips docstring indentation, 3.12 keeps it: a recording must replay on both."""
+    from claims_lab.cache import _llm_key
+    py312 = "[('tools', [{'description': \"Look up a policy. Returns the holder,\\n    the car and its plate.\"}])]"
+    py313 = "[('tools', [{'description': \"Look up a policy. Returns the holder,\\nthe car and its plate.\"}])]"
+    assert _llm_key(py312) == _llm_key(py313)

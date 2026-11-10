@@ -54,10 +54,17 @@ def _key(prompt: str) -> str:
 _ENDPOINT = re.compile(r'"(azure_endpoint|base_url|openai_api_base)": "[^"]*"(, )?')
 
 
+_INDENT = re.compile(r"\\n +")
+
+
 def _llm_key(llm_string: str) -> str:
     """The model settings without the address of the service: the same deployment answers the same way whether its
-    endpoint is written as the regional or the resource address, so a recording made here replays in class."""
-    return _ENDPOINT.sub("", llm_string)
+    endpoint is written as the regional or the resource address, so a recording made here replays in class.
+
+    Indentation after a line break is dropped too. The tool descriptions in these settings come from docstrings, and
+    Python 3.13 and later strip a docstring's indentation while 3.12 keeps it, so without this a recording made on one
+    Python version would never replay on the other."""
+    return _INDENT.sub(r"\\n", _ENDPOINT.sub("", llm_string))
 
 
 class SQLiteReplayCache(BaseCache):
