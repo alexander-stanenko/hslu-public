@@ -166,3 +166,15 @@ def test_a_check_run_again_on_our_version_says_it_is_ours(capsys):
     assert block1.check_my_invoice_check(ours) is ours                 # the cell run a second time
     out = capsys.readouterr().out
     assert "This is our check_duplicate_invoice" in out and "Using yours" not in out
+
+
+def test_rules_tool_extra_runs_a_fifth_tool_without_arguments():
+    """Notebook 01, Extra 1: run_loop takes the tool descriptions and the functions; get_rules has no arguments."""
+    from types import SimpleNamespace
+    call = SimpleNamespace(id="c1", function=SimpleNamespace(name="get_rules", arguments=""))
+    functions = {**block1.TOOLS_BY_NAME, "get_rules": block1.get_rules}
+    assert "cheat sheet" in block1._run_tool(call, functions)
+    assert "Unknown tool" in block1._run_tool(call)                     # without it, the four tools of Part C
+    assert block1.RULES_TOOL["function"]["parameters"]["properties"] == {}
+    messages = block1.run_loop(cl.load_package("PKG-002"), tools=block1.TOOLS + [block1.RULES_TOOL], functions=functions)
+    assert block1.outcome(messages) == "refer_adjuster"

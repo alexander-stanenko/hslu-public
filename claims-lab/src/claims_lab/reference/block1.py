@@ -21,7 +21,7 @@ import os
 
 from .. import tools as T
 from ..client import get_client
-from ..data import Package
+from ..data import Package, cheat_sheet
 from ..schemas import ClaimDecision, ClaimFacts
 from . import blank_line_after
 
@@ -168,34 +168,36 @@ or refer_adjuster (a human must decide). Use the tools to check the policy and t
 Finish with the decision, the payout in CHF if any, and a short reason."""
 
 
-def _run_tool(call) -> str:
+def _run_tool(call, functions: dict | None = None) -> str:
     """Run one tool the model asked for; an unknown tool or bad arguments come back as an error the model can read."""
-    tool = TOOLS_BY_NAME.get(call.function.name)
+    tool = (functions or TOOLS_BY_NAME).get(call.function.name)
     if tool is None:
         return json.dumps({"error": f"Unknown tool {call.function.name}"})
     try:
-        return tool(**json.loads(call.function.arguments))
+        return tool(**json.loads(call.function.arguments or "{}"))
     except (TypeError, ValueError) as e:
         return json.dumps({"error": f"Bad arguments for {call.function.name}: {e}"})
 
 
-def run_loop(pkg: Package, max_steps: int = 8, client=None, system: str = SYSTEM_PROMPT) -> list:
+def run_loop(pkg: Package, max_steps: int = 8, client=None, system: str = SYSTEM_PROMPT,
+             tools: list | None = None, functions: dict | None = None) -> list:
     """The agent loop: ask the model, run the tools it asks for, send the results back, repeat until it answers.
 
     max_steps stops a confused agent (an agent without a limit can loop, and every step re-sends the whole history).
-    system is the system prompt (notebook 01's extra task adds a line to it).
+    system is the system prompt. tools are the descriptions sent to the model (default TOOLS) and functions the Python
+    functions by name (default TOOLS_BY_NAME); notebook 01's extra task passes both with one tool more.
     Returns the full list of messages (cl.show_trace prints it).
     """
     client = client or get_client()
     messages = [{"role": "system", "content": system}, {"role": "user", "content": pkg.text()}]
     for step in range(max_steps):
-        response = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS)
+        response = client.chat.completions.create(model=MODEL, messages=messages, tools=tools or TOOLS)
         reply = response.choices[0].message
         messages.append(reply)
         if not reply.tool_calls:                                # no tool requested: this is the answer
             return messages
         for call in reply.tool_calls:                           # run each requested tool, send the result back
-            messages.append({"role": "tool", "tool_call_id": call.id, "content": _run_tool(call)})
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": _run_tool(call, functions)})
     return messages
 
 
@@ -381,6 +383,18 @@ def outcome(messages: list) -> str:
         return m.group(1)
     found = [(text.find(w), name) for name, words in _OUTCOME_WORDS.items() for w in words if w in text]
     return min(found)[1] if found else "unclear"
+
+
+# ------------------------------------------------------------------ Extra task: Lakeside's rules as a tool
+def get_rules() -> str:
+    """Lakeside's rules for deciding a claim: the clerk's cheat sheet from notebook 00."""
+    return cheat_sheet(show=False)
+
+
+RULES_TOOL = {"type": "function", "function": {
+    "name": "get_rules",
+    "description": "Lakeside's rules for deciding a claim: the four outcomes and the four questions.",
+    "parameters": {"type": "object", "properties": {}}}}
 
 
 # ------------------------------------------------------------------ Extra task: a spending limit per run
