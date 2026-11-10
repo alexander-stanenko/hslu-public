@@ -29,23 +29,42 @@ FAST_TRACK_LIMIT_CHF = 5000
 MODEL = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-5.4-mini")
 
 # ------------------------------------------------------------------ Part A: the chatbot
+# The form exists only in the prompt: the keys and the allowed values. Notebook 02 hands the form to the provider instead.
+DECISION_FORMAT = """Answer only with a JSON object with these keys:
+- "decision": "fast_track" (pay now), "request_info" (something is missing), "decline" (not insured) or "refer_adjuster" (an adjuster must decide)
+- "payout_chf": the amount to pay in CHF, only for fast_track; otherwise null
+- "missing_items": a list of what the customer must still send, such as "police_report"
+- "issues": a list of red flags or reasons, such as "duplicate_invoice"
+- "reasoning": two to four sentences"""
+
+
 def chatbot(pkg: Package, client=None) -> ClaimDecision:
     """One model call: the package goes in, a decision comes out. No database, no terms, no history."""
     client = client or get_client()
-    response = client.chat.completions.parse(
-        model=MODEL, messages=[{"role": "user", "content": "Decide this insurance claim.\n\n" + pkg.text()}],
-        response_format=ClaimDecision)
-    return response.choices[0].message.parsed
+    response = client.chat.completions.create(
+        model=MODEL, messages=[{"role": "user", "content": "Decide this insurance claim.\n" + DECISION_FORMAT + "\n\n" + pkg.text()}])
+    answer = response.choices[0].message.content
+    return ClaimDecision(**json.loads(answer))
 
 
 # ------------------------------------------------------------------ Part B: the workflow (a fixed chain)
+FACTS_FORMAT = """Answer only with a JSON object with these keys; use null for anything the documents do not give:
+- "policy_id": the policy number, such as "P-1001"
+- "customer_name" and "plate": the customer's name and the car's plate, such as "LU 248 113"
+- "damage": "glass", "hail", "theft", "collision" or "other"
+- "damage_date": the day of the damage, as YYYY-MM-DD
+- "amount_chf": the invoice total in CHF, as a number
+- "invoice_no" and "garage": the invoice's number and the garage
+- "documents_present": a list of the kinds of document in the package ("email", "invoice", "police_report")"""
+
+
 def extract_facts(pkg: Package, client=None) -> ClaimFacts:
     """Step 1 of the workflow: the model only reads; it decides nothing."""
     client = client or get_client()
-    response = client.chat.completions.parse(
-        model=MODEL, messages=[{"role": "user", "content": "Extract the key facts of this claim package.\n\n" + pkg.text()}],
-        response_format=ClaimFacts)
-    return response.choices[0].message.parsed
+    response = client.chat.completions.create(
+        model=MODEL, messages=[{"role": "user", "content": "Extract the key facts of this claim package.\n" + FACTS_FORMAT + "\n\n" + pkg.text()}])
+    answer = response.choices[0].message.content
+    return ClaimFacts(**json.loads(answer))
 
 
 def check_duplicate_invoice(facts: ClaimFacts, policy: dict) -> ClaimDecision | None:

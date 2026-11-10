@@ -178,6 +178,12 @@ class OfflineChatModel(BaseChatModel):
         if forced or (tool_choice in ("any", "required") and len(specs) == 1):
             spec = by_name[forced] if forced else specs[0]
             return call(spec["name"], _fill(spec["parameters"], text, messages=messages))
+        if not specs and "Answer only with a JSON object" in text:   # notebook 01: the form only in the prompt
+            from .schemas import ClaimDecision, ClaimFacts
+            form = ClaimFacts if '"documents_present"' in text else ClaimDecision
+            package = "\n".join(line for line in text.splitlines()   # the examples in the key list are not facts
+                                 if not line.startswith('- "') and not line.startswith("Answer only with a JSON object"))
+            return AIMessage(content=json.dumps(_fill(form.model_json_schema(), package, messages=messages)))
         if not specs:
             d = _decision(text, messages)
             return AIMessage(content=f"Decision: {d['decision']}. {d['reasoning']}")
