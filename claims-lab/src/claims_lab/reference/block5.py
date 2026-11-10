@@ -59,6 +59,10 @@ never calculate in your head.
 4. If asked, the payout with calc_payout.
 Answer in a few lines: what you checked and what you found. You decide nothing."""
 
+# Notebook 05, Extra 3: our line for the coverage analyst's prompt, used when the participant's EXTRA_LINE is empty.
+COVERAGE_EXTRA_LINE = ("Whether the damage is covered comes from the policy's covers list (lookup_policy); a kind of damage "
+                       "it does not list is not covered.")
+
 RED_FLAG_PROMPT = """You are the red-flag checker in Lakeside Insurance AG's claims team. The team's supervisor asks you
 about one claim; you do not see the claim package, only the question. Use your tools for every check; never guess.
 Check whether the invoice number was used before (search_claims_by_invoice) and what the policy's claim history shows

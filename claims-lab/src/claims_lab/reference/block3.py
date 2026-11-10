@@ -374,3 +374,8 @@ async def check_bridge(bridge_fn, server):
     print(f"Your bridge passes: the same {len(ours)} tools and descriptions as the server's, and lookup_policy('P-1001') "
           f"returns the policy:\n  {got[:160]}...")
     return bridge_fn
+
+
+# Notebook 03, Extra 2: our text for the prompt the server offers, used when the participant's REVIEW_PROMPT is empty.
+REVIEW_PROMPT = ("Review claim package {package_id}. Work through the four questions of the clerk's cheat sheet in order "
+                 "and decide: fast_track, request_info, refer_adjuster or decline. Give the reason.")
