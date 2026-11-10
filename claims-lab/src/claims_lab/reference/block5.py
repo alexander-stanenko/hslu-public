@@ -183,9 +183,35 @@ class _Recorder(BaseCallbackHandler):
 
     def __init__(self, names=SUBAGENTS):
         self.names, self._open, self.runs = set(names), {}, []
+        self._parent, self._tool = {}, {}      # run → its parent run; tool run → the tool's name
+        self.wrappers = set()                  # names of the tools that run a specialist
+        self.tool_calls = {}                   # tool name → [model calls, input tokens] made inside that tool
+
+    def on_tool_start(self, serialized, input_str, *, run_id, parent_run_id=None, **kwargs):
+        self._parent[run_id] = parent_run_id
+        self._tool[run_id] = kwargs.get("name") or (serialized or {}).get("name")
+
+    def on_chat_model_start(self, serialized, messages, *, run_id, parent_run_id=None, **kwargs):
+        self._parent[run_id] = parent_run_id
+
+    def on_llm_end(self, response, *, run_id, **kwargs):
+        p = self._parent.get(run_id)
+        while p is not None and p not in self._tool:   # the nearest tool this model call ran in, if any
+            p = self._parent.get(p)
+        if p is None:
+            return
+        count = self.tool_calls.setdefault(self._tool[p], [0, 0])
+        count[0] += 1
+        try:
+            count[1] += response.generations[0][0].message.usage_metadata["input_tokens"]
+        except (AttributeError, IndexError, KeyError, TypeError):
+            pass
 
     def on_chain_start(self, serialized, inputs, *, run_id, name=None, **kwargs):
         name = name or (serialized or {}).get("name")
+        self._parent[run_id] = kwargs.get("parent_run_id")
+        if name in self.names and kwargs.get("parent_run_id") in self._tool:
+            self.wrappers.add(self._tool[kwargs["parent_run_id"]])
         if name in self.names and isinstance(inputs, dict) and inputs.get("messages"):
             first = inputs["messages"][0]
             question = first[1] if isinstance(first, tuple) else getattr(first, "text", str(first))
@@ -344,6 +370,11 @@ def watch(team, pkg: Package, plot: bool = True) -> dict:
                 args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
                 print(f"      calls {_short(tc['name'] + '(' + args + ')', 100)}")
         print(f"    answers: {_short(q['messages'][-1].text, 220)}")
+    plain = _plain_tool_calls(result["messages"], rec.wrappers)
+    for tc, text in plain:   # tools that are not a specialist agent, such as customer comms: the call and its whole result
+        args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
+        print(f"  calls {_short(tc['name'] + '(' + args + ')', 160)}")
+        print("    returns:\n" + "\n".join("      " + line for line in text.strip().splitlines()))
     d = result.get("structured_response")
     if d is not None:
         print(f"supervisor          decides {d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else "")
@@ -364,6 +395,10 @@ def watch(team, pkg: Package, plot: bool = True) -> dict:
         while key in contexts:  # a specialist asked twice
             key, i = f"{name.replace('_', ' ')} ({i})", i + 1
         contexts[key] = _parts(messages, tools, prompt)
+    for name in dict.fromkeys(tc["name"] for tc, _ in plain):
+        calls, tokens = rec.tool_calls.get(name, [0, 0])
+        total_calls, total_tokens = total_calls + calls, total_tokens + tokens
+        print(f"  {name.replace('_', ' '):<18} {calls} calls, {tokens:>6,} input tokens (a tool, not an agent)")
     print(f"  {'team':<18} {total_calls} calls, {total_tokens:>6,} input tokens")
     contexts["one agent (estimate)"] = {
         "system prompt": _tokens(block2.PLAN_PROMPT),
@@ -375,6 +410,14 @@ def watch(team, pkg: Package, plot: bool = True) -> dict:
         from ..style import plot_contexts
         plot_contexts(contexts)
     return result
+
+
+def _plain_tool_calls(messages, wrappers: set) -> list[tuple[dict, str]]:
+    """The supervisor's tool calls that did not run a specialist agent, each with the text the tool returned."""
+    results = {m.tool_call_id: m.text for m in messages if m.type == "tool"}
+    calls = [(tc, results.get(tc["id"], "")) for m in messages if m.type == "ai"
+             for tc in (getattr(m, "tool_calls", None) or []) if tc["name"] not in wrappers]
+    return [(tc, text) for tc, text in calls if not text.startswith("Returning structured response")]  # the answer form
 
 
 def system(team):
@@ -390,7 +433,7 @@ def versus_recorded(label: str = "claims team"):
     from ..course import RUN_COLUMNS, _interactive, as_runs, reference_runs
     from ..scoreboard import HISTORY
     from ..style import plot_history
-    mine = pd.DataFrame([h for h in HISTORY if h["label"] == label][-1:])
+    mine = pd.DataFrame([h for h in HISTORY if h.get("design", h["label"]) == label][-1:])
     ref = reference_runs(block=5)
     parts = ([as_runs(mine).assign(source="you, today")] if len(mine) else []) + [ref[RUN_COLUMNS].assign(source="our runs")]
     table = pd.concat(parts, ignore_index=True)
@@ -446,13 +489,42 @@ def check_patterns(mine: dict) -> int:
 
 # ------------------------------------------------------------------ Stretch tasks
 def team_node(team):
-    """Stretch (a): the team as the judgement step of the hybrid pipeline. It gets the package and the screen's signs."""
+    """Extra 2 of notebook 05 (ours): the team as the judgement step of the hybrid pipeline. It gets the package and the screen's signs."""
     def claims_team(state: block4.ClaimState) -> dict:
         note = ("\n\nNote from the pipeline: all rule checks passed. A first reading found signs that need judgement: "
                 f"{'; '.join(state['judgement'].signs) or 'unspecified'}. Check them before you decide.")
         result = team.invoke({"messages": [("user", state["package"].text() + note)]}, config=run_config(12))
         return {"decision": result["structured_response"]}
     return claims_team
+
+
+@blank_line_after
+def check_team_node(candidate, team):
+    """Notebook 05, Extra 2: check your claims_team without running it (no model call). An unfinished one (not a
+    function, a line still ..., no return) is replaced by ours, block5.team_node(team), with the reason; a finished one
+    is used."""
+    if getattr(candidate, "course_reference", False):   # the cell was run again after it switched to ours
+        print("This is our claims_team, block5.team_node(team).")
+        return candidate
+    problem = None
+    if not callable(candidate):
+        problem = "it is not a function"
+    else:
+        try:
+            lines = [l.split("#")[0].strip() for l in inspect.getsource(candidate).splitlines()[1:]]
+        except (OSError, TypeError):
+            lines = []
+        if any("..." in l for l in lines):
+            problem = "a line is still ..."
+        elif lines and not any(l.startswith("return") for l in lines):
+            problem = 'it returns nothing yet; it should return {"decision": ...}'
+    if problem:
+        print(f"Your claims_team is not finished yet ({problem}).\nThe cells below use ours, block5.team_node(team).")
+        ours = team_node(team)
+        ours.course_reference = True
+        return ours
+    print("Yes: claims_team is written. The next cell puts it into the pipeline.")
+    return candidate
 
 
 COMMS_PROMPT_LINE = ("\nWhen your decision is request_info, call ask_customer_comms before you answer, with the package "

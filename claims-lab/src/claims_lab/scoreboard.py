@@ -22,7 +22,7 @@ from .schemas import ClaimDecision
 from .trace import indented
 
 HISTORY: list[dict] = []
-RUNS: dict[str, pd.DataFrame] = {}  # the latest per-claim table of each design, for the claims grid
+RUNS: dict[str, pd.DataFrame] = {}  # the latest per-claim table of each design (by label), for the claims grid
 
 # phrases that count as naming an expected issue or missing item. They must start a word ("late" does not match
 # "calculated"); the issues and missing_items lists are checked first, then the reasoning.
@@ -155,13 +155,36 @@ def _retryable(err: str | None) -> bool:
     return bool(err) and "BudgetExceeded" not in err and any(k in err.lower() for k in RETRYABLE)
 
 
+_SAME_RUN = ("accuracy", "unsafe_approvals", "llm_calls_per_pkg", "cost_usd_per_pkg")
+
+
+def _record(summary: dict, df: pd.DataFrame) -> None:
+    """Add a run to the history. A demo cell run again replays the same recorded run, so that run replaces the earlier
+    point instead of adding a second one. Another run under a label already used gets a number: "checklist agent, run 2"."""
+    base = summary["label"]
+    summary["design"] = base
+    same = [i for i, h in enumerate(HISTORY) if h.get("design", h["label"]) == base]
+    RUNS[base] = df                       # the latest per-claim table of each design
+    if same and summary["replayed"]:
+        last = HISTORY[same[-1]]
+        if last["replayed"] and all(last[k] == summary[k] for k in _SAME_RUN):
+            summary["label"] = last["label"]
+            HISTORY[same[-1]] = summary
+            return
+    if same:
+        summary["label"] = f"{base}, run {len(same) + 1}"
+    HISTORY.append(summary)
+
+
 def _report(rows, summary, show: bool):
     df = pd.DataFrame(rows)
-    HISTORY.append(summary)
-    RUNS[summary["label"]] = df
+    _record(summary, df)
     if show:
         s = summary
-        print(f"SCOREBOARD: {s['label']}  ({s['n']} claims)" + (". Replayed: calls, cost and time as recorded in the live run" if s["replayed"] else ""))
+        print(f"SCOREBOARD: {s['label']}  ({s['n']} claims)")
+        if s["replayed"]:
+            print("  Replayed: one recorded run of ours, with the calls, cost and time of that run. A live run can differ; "
+                  "the result card shows the range over all our runs.")
         if s["errors"]:
             print(f"  Warning: {s['errors']} of {s['n']} claims failed (see the error column), probably the rate limit. They are left out of "
                   f"the accuracy. Wait 30 seconds and run the cell again.")

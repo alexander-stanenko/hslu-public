@@ -48,7 +48,8 @@ def plot_history(df, reference=None) -> None:
             bad = r["unsafe_approvals"] > 0
             ax.scatter(r["cost_usd_per_pkg"], r["accuracy"], s=140, color=unsafe_colour if bad else ACCENT, zorder=3,
                        edgecolor="black", linewidth=1.5 if i == len(df) - 1 else 0.3)
-            note = f"{i + 1}. {r['label']}" + (f" (unsafe: {int(r['unsafe_approvals'])})" if bad else "")
+            note = (f"{i + 1}. {r['label']}" + (", recorded" if r.get("replayed") else "")
+                    + (f" (unsafe: {int(r['unsafe_approvals'])})" if bad else ""))
             ax.annotate(note, (r["cost_usd_per_pkg"], r["accuracy"]), xytext=(8, 4), textcoords="offset points", fontsize=9)
     ax.set_xlabel("Cost per claim (USD)")
     ax.set_ylabel("Decision accuracy")

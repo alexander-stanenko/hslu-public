@@ -132,25 +132,39 @@ GRAPH_STYLES = {"model": "fill:#d6eef4,stroke:#000", "code": "fill:#ffffff,strok
                 "visited": "stroke-width:4px"}
 
 
-def show_graph(app, highlight: list[str] | None = None, kinds: dict | None = None) -> None:
+def show_graph(app, highlight: list[str] | None = None, kinds: dict | None = None, beside=None,
+               titles: tuple[str, str] = ("Your graph", "Ours")) -> None:
     """Draw a compiled LangGraph graph. kinds marks nodes as model, code or person (by colour); highlight draws the path
-    one claim took with a thick border. Without the drawing service (offline, automated runs), print the Mermaid text."""
+    one claim took with a thick border. beside: a second graph drawn next to the first (for example the reference), with
+    titles. Without the drawing service (offline, automated runs), print the Mermaid text."""
     import os
 
     from langchain_core.runnables.graph_mermaid import draw_mermaid_png
 
     from .models import provider
-    text = app.get_graph().draw_mermaid()
-    nodes = set(app.get_graph().nodes)
-    extra = [f"\tclassDef {k} {v}" for k, v in GRAPH_STYLES.items()]
-    for kind in ("model", "code", "person"):
-        members = [n for n, k in (kinds or {}).items() if k == kind and n in nodes]
-        if members:
-            extra.append(f"\tclass {','.join(members)} {kind}")
-    visited = [n for n in dict.fromkeys(highlight or []) if n in nodes]
-    if visited:
-        extra.append(f"\tclass {','.join(visited)} visited")
-    text = text.rstrip() + "\n" + "\n".join(extra) + "\n"
+    if beside is not None:
+        if provider() != "offline" and not os.environ.get("CLAIMS_LAB_NONINTERACTIVE"):
+            try:
+                import base64
+
+                from IPython.display import HTML, display
+                pngs = [base64.b64encode(draw_mermaid_png(_mermaid(a, kinds, highlight), max_retries=2)).decode()
+                        for a in (app, beside)]
+                cells = "".join(f'<td style="vertical-align:top;text-align:center;padding:0 12px"><b>{t}</b><br>'
+                                f'<img src="data:image/png;base64,{b}" style="max-width:100%"></td>'
+                                for t, b in zip(titles, pngs))
+                display(HTML(f"<table><tr>{cells}</tr></table>"))
+                if kinds:
+                    print("Blue: a model call; white: code; pink: a person")
+                return
+            except Exception:  # no network, or the service is busy: one after the other, drawn locally
+                pass
+        for t, a in zip(titles, (app, beside)):
+            print(t)
+            show_graph(a, highlight, kinds)
+        return
+    text = _mermaid(app, kinds, highlight)
+    visited = [n for n in dict.fromkeys(highlight or []) if n in set(app.get_graph().nodes)]
     legend = ("Blue: a model call; white: code; pink: a person" if kinds else "") + ("; thick border: the path of this claim" if visited else "")
     if provider() != "offline" and not os.environ.get("CLAIMS_LAB_NONINTERACTIVE"):
         try:
@@ -165,6 +179,21 @@ def show_graph(app, highlight: list[str] | None = None, kinds: dict | None = Non
                 print(legend.strip(" ;"))
             return
     print(text)
+
+
+def _mermaid(app, kinds, highlight) -> str:
+    """The graph as Mermaid text, with the colours of kinds and the thick border of highlight."""
+    text = app.get_graph().draw_mermaid()
+    nodes = set(app.get_graph().nodes)
+    extra = [f"\tclassDef {k} {v}" for k, v in GRAPH_STYLES.items()]
+    for kind in ("model", "code", "person"):
+        members = [n for n, k in (kinds or {}).items() if k == kind and n in nodes]
+        if members:
+            extra.append(f"\tclass {','.join(members)} {kind}")
+    visited = [n for n in dict.fromkeys(highlight or []) if n in nodes]
+    if visited:
+        extra.append(f"\tclass {','.join(visited)} visited")
+    return text.rstrip() + "\n" + "\n".join(extra) + "\n"
 
 
 def _draw_locally(app, kinds, visited) -> None:
