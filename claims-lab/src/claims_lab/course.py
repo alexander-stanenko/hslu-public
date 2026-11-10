@@ -272,8 +272,10 @@ def result_card(block: int) -> None:
     mine = pd.DataFrame(HISTORY)
     ref = reference_runs(block=block)
     if len(mine) or len(ref):
-        if _interactive():
+        if _interactive() and (len(mine) or len(ref) >= 3):   # two of our points alone make an empty-looking chart
             plot_history(mine if len(mine) else None, reference=ref if len(ref) else None)
+        if not len(mine):
+            _markdown("No scoreboard run in this notebook, so the table shows only our runs on the eight test claims.")
         parts = []
         if len(mine):
             source = ["demo (replayed)" if r else "you, today"

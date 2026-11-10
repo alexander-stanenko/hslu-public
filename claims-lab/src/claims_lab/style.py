@@ -53,7 +53,9 @@ def plot_history(df, reference=None) -> None:
     ax.set_xlabel("Cost per claim (USD)")
     ax.set_ylabel("Decision accuracy")
     ax.set_ylim(0, 1.08)
-    ax.set_xlim(left=0)
+    costs = list(df["cost_usd_per_pkg"]) if df is not None else []
+    costs += list(reference["cost_usd_per_pkg"]) if reference is not None else []
+    ax.set_xlim(0, max(costs, default=0) * 1.15 or None)   # room for the rightmost marker and its label
     title = "Each design: accuracy against cost (magenta: paid claims it should not have)"
     ax.set_title(title + ("\nfilled: your runs today; hollow squares: our runs, averaged per design" if reference is not None else ""))
     ax.spines[["top", "right"]].set_visible(False)
