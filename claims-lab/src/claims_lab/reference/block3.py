@@ -6,7 +6,7 @@
     await block3.show_wire(server)                          # the JSON-RPC messages of tools/list and one tools/call
     async with block3.mcp_session() as tools:               # Lakeside's two read-only servers, one session each
         await cl.aspot_check(block3.mcp_agent(tools), "PKG-001", "PKG-002", "PKG-003")
-    agent = await block3.intake_agent(answers={"policy_id": "P-1004"})    # Part C
+    agent = await block3.intake_agent(answers={"policy_id": "P-1004"})    # B3
 """
 from __future__ import annotations
 
@@ -306,10 +306,12 @@ def arun(agent, max_steps: int = 12):
     return system
 
 
-# ------------------------------------------------------------------ Part C: elicitation
+# ------------------------------------------------------------------ B3: elicitation
 INTAKE_PROMPT = ("Before the checklist, open a claim file with open_claim. If the documents give no policy number, call "
-                 "open_claim without policy_id: the claims system then asks the user, and you continue with the policy "
-                 "number from its answer.\n\n" + block2.PLAN_PROMPT)
+                 "open_claim without policy_id: the claims system then asks the user. Continue with the policy number "
+                 "from its answer. "
+                 "If the file is not opened, the policy is not identified: decide request_info (policy_id), and do not "
+                 "pick a policy yourself.\n\n" + block2.PLAN_PROMPT)   # without the last sentence, a decline was paid (B3)
 
 
 async def intake_agent(llm=None, answers: dict | None = None, read_tools: list | None = None):
