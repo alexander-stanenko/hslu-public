@@ -52,12 +52,12 @@ def test_ensure_terms_and_prompt_adds_only_what_is_missing(tmp_path, capsys):
     server = block3.load_server(block3.write_server(tmp_path / "s.py"))
     asyncio.run(block3.ensure_terms_and_prompt(server))
     out = capsys.readouterr().out
-    assert "terms://{product}" in out and "review_claim" in out
+    assert "terms://car" in out and "review_claim" in out
 
     async def check():
         async with Client(server) as c:
-            assert "§6 Deductibles" in (await c.read_resource("terms://motor"))[0].text
-            assert "PKG-012" in (await c.get_prompt("review_claim", {"package_id": "PKG-012"})).messages[0].content.text
+            assert "§3 What is never covered" in (await c.read_resource("terms://car"))[0].text
+            assert "PKG-001" in (await c.get_prompt("review_claim", {"package_id": "PKG-001"})).messages[0].content.text
     asyncio.run(check())
     asyncio.run(block3.ensure_terms_and_prompt(server))
     assert capsys.readouterr().out == ""                                         # nothing missing, nothing said
@@ -65,13 +65,13 @@ def test_ensure_terms_and_prompt_adds_only_what_is_missing(tmp_path, capsys):
 
 def test_show_wire_prints_the_json_rpc_exchange(tmp_path, capsys):
     server = block3.load_server(block3.write_server(tmp_path / "s.py"))
-    msgs = asyncio.run(block3.show_wire(server, "lookup_policy", {"policy_id": "P-10001"}))
+    msgs = asyncio.run(block3.show_wire(server, "lookup_policy", {"policy_id": "P-1001"}))
     methods = [m.get("method") for _, m in msgs]
     assert methods[:4] == ["initialize", None, "notifications/initialized", "tools/list"] and "tools/call" in methods
     assert all(m["jsonrpc"] == "2.0" for _, m in msgs)
     call = next(m for d, m in msgs if m.get("method") == "tools/call")
     reply = next(m for d, m in msgs if d.startswith("server") and m.get("id") == call["id"])
-    assert call["params"]["arguments"] == {"policy_id": "P-10001"}
+    assert call["params"]["arguments"] == {"policy_id": "P-1001"}
     assert json.loads(reply["result"]["content"][0]["text"])["holder"] == "Anna Brunner"   # unshortened in the return
     out = capsys.readouterr().out
     assert '"method": "tools/list"' in out and '"method": "tools/call"' in out and "... 1 more tool" in out
@@ -108,13 +108,13 @@ def test_mcp_session_starts_each_server_once_per_run(monkeypatch):
             return _original(connection, *a, **kw)
         monkeypatch.setattr(module, "create_session", counting)
 
-    servers = ["claims_systems", "policy_docs", "reference_data", "garage_ratings"]
+    servers = ["claims_systems", "policy_docs", "garage_ratings"]
 
     async def run():
         async with block3.mcp_session(servers) as tools:
             names = [t.name for t in tools]
-            assert len(names) == 9 and "get_garage_rating" in names
-            result = await block3.arun(block3.mcp_agent(tools))(cl.load_package("PKG-015"))
+            assert len(names) == 7 and "get_garage_rating" in names
+            result = await block3.arun(block3.mcp_agent(tools))(cl.load_package("PKG-002"))
             used = [m.name for m in result["messages"] if m.type == "tool"]
             assert len(used) >= 3 and result["structured_response"].decision == "refer_adjuster"
         return tools
@@ -122,18 +122,18 @@ def test_mcp_session_starts_each_server_once_per_run(monkeypatch):
     tools = asyncio.run(run())
     assert len(opened) == len(servers)                         # one process per server, not one per tool call
     with pytest.raises(Exception):                             # the tools only work inside the block
-        asyncio.run(tools[0].ainvoke({"policy_id": "P-10001"}))
+        asyncio.run(tools[0].ainvoke({"policy_id": "P-1001"}))
 
 
 def test_mcp_session_with_elicitation(monkeypatch):
-    ask = make_elicitation_callback(answers={"policy_id": "P-10014"}, interactive=False)
+    ask = make_elicitation_callback(answers={"policy_id": "P-1004"}, interactive=False)
 
     async def run():
         async with block3.mcp_session(["comms"], callbacks=Callbacks(on_elicitation=ask)) as comms_tools:
             open_claim = next(t for t in comms_tools if t.name == "open_claim")
-            return await open_claim.ainvoke({"package_id": "PKG-021"})
+            return await open_claim.ainvoke({"package_id": "PKG-004"})   # PKG-004 states no policy number
     out = asyncio.run(run())
-    assert "P-10014" in str(out) and "elicitation" in str(out)
+    assert "P-1004" in str(out) and "elicitation" in str(out)
 
 
 def test_time_sessions_prints_both_ways(tmp_path, capsys):

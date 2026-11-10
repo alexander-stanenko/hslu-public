@@ -1,0 +1,12 @@
+Garage Huber AG
+INVOICE GH-4471
+Date: 2026-10-22
+
+Customer: Anna Brunner
+Vehicle: LU 248 113
+
+  Windscreen, new                                   780.00
+  Labour                                            370.00
+  TOTAL CHF (incl. VAT)                           1'150.00
+
+Payment within 30 days.

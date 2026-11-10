@@ -1,10 +1,11 @@
-From: Katrin Bühler <katrin.buehler@mail.example>
+From: Beatrice Gerber <beatrice.gerber@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-11-03 17:42
-Subject: Claim - documents attached
+Date: 2026-09-28
+Subject: Claim
 
 Hello,
 
-claim form and invoice for my windscreen attached (P-10031).
+the hail on 14 September damaged almost every panel of my car. The repair invoice is attached.
 
-Katrin Bühler
+Policy P-1106
+Beatrice Gerber

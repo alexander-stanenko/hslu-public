@@ -1,10 +1,10 @@
-From: Adrian Arnold <adrian.arnold@mail.example>
+From: Claudia Roth <claudia.roth@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-09-29 20:23
-Subject: Schadenmeldung
+Date: 2026-10-30
+Subject: Claim
 
 Hello,
 
-the big hailstorm on 21 September in Münsingen damaged my Ford: roof and bonnet are dented. Estimate attached. Policy P-10028.
+the front left side window of my Peugeot (ZG 61 340) was smashed in Zug on 28 October; nothing was taken. Garage Zentrum replaced it, invoice attached. I can't find my policy number, sorry.
 
-Adrian Arnold
+Claudia Roth

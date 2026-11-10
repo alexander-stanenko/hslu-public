@@ -1,10 +1,9 @@
 {
   "package_id": "PKG-104",
-  "received_at": "2026-10-24T16:38:00",
+  "received_at": "2026-11-02",
   "channel": "email",
-  "sender": "fabio.marchetti@mail.example",
+  "sender": "ursula.k\u00e4lin@mail.example",
   "attachments": [
-    "Schadenmeldung.txt",
-    "Carrosserie_SF-1093.txt"
+    "invoice.txt"
   ]
 }

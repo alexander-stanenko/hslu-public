@@ -1,9 +1,9 @@
 {
   "package_id": "PKG-005",
-  "received_at": "2026-10-28T18:29:00",
+  "received_at": "2026-10-27",
   "channel": "email",
-  "sender": "martina.graf@mail.example",
+  "sender": "laura.frei@mail.example",
   "attachments": [
-    "Rechnung_ES-1408.txt"
+    "invoice.txt"
   ]
 }

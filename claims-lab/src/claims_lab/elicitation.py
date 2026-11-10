@@ -18,7 +18,7 @@ def make_elicitation_callback(answers: dict | None = None, interactive: bool | N
     """Create an `on_elicitation` callback for langchain_mcp_adapters `Callbacks`.
 
     Args:
-        answers: pre-defined answers by field name, e.g. {"policy_id": "P-10014"} (used when not interactive).
+        answers: pre-defined answers by field name, e.g. {"policy_id": "P-1004"} (used when not interactive).
         interactive: ask the person at the keyboard via input(). Default: True unless CLAIMS_LAB_NONINTERACTIVE=1.
     """
     answers = answers or {}

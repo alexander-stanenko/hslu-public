@@ -1,10 +1,12 @@
-From: Ramona Kaufmann <ramona.kaufmann@mail.example>
+From: Martin Frey <martin.frey@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-21 15:50
-Subject: New claim
+Date: 2026-09-16
+Subject: Claim
 
 Hello,
 
-again a stone in the windscreen, unfortunately. Garage Huber replaced it, invoice attached. P-10025.
+the hail on 14 September dented the roof and the bonnet of my car. Carrosserie Kriens will repair it next week and send me the invoice then. Can you already confirm that you will pay?
 
-Ramona Kaufmann
+Policy P-1015
+
+Martin Frey

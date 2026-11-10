@@ -1,0 +1,12 @@
+Carrosserie Bern-West
+INVOICE CB-4402
+Date: 2026-09-28
+
+Customer: Beatrice Gerber
+Vehicle: BE 501 337
+
+  Paintless dent repair, all panels               5'600.00
+  Labour                                          1'200.00
+  TOTAL CHF (incl. VAT)                           6'800.00
+
+Payment within 30 days.

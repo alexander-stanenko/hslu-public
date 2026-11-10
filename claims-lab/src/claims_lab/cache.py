@@ -24,8 +24,8 @@ from .costs import CACHED_FLAG
 
 
 def _key(prompt: str) -> str:
-    """The request without what the model never sees and what differs between a recording and its replay: message ids
-    and each answer's metadata and usage (lookup() marks replayed answers there, and LangChain adds a cost of 0).
+    """The request without what the model never sees and what differs between a recording and its replay: message ids,
+    the random ids of content blocks, and each answer's metadata and usage (lookup() marks replayed answers there, and LangChain adds a cost of 0).
     Without this, an agent's second call, whose history holds the replayed first answer, would never match the
     recording, and every step after the first would run live."""
     try:
@@ -35,6 +35,8 @@ def _key(prompt: str) -> str:
 
     def clean(x):
         if isinstance(x, dict):
+            if isinstance(x.get("id"), str) and x["id"].startswith("lc_") and "type" in x:
+                del x["id"]                        # a content block's random id (MCP tool results carry one)
             kwargs = x.get("kwargs")
             if isinstance(kwargs, dict):
                 for name in ("id", "response_metadata", "usage_metadata"):

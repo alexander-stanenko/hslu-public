@@ -36,32 +36,32 @@ def test_check_tools_catches_an_argument_renamed_only_in_the_signature(capsys):
     """Notebook 02 B2: renaming `x` or `id` in the def line but not in the return line breaks the tool at call time."""
     @tool
     def get_claim_history(policy_id: str) -> str:
-        """All earlier claims on a policy ('P-10001')."""
+        """All earlier claims on a policy ('P-1001')."""
         return str(tools.get_claim_history(str(x)))  # noqa: F821 - the participant's mistake
 
     @tool
     def lookup_policy(policy_id: str) -> str:
-        """The policy record for a policy number like 'P-10001'."""
+        """The policy record for a policy number like 'P-1001'."""
         return str(tools.lookup_policy(id))  # the built-in id: no NameError, but the wrong argument
 
     for broken in (get_claim_history, lookup_policy):
-        assert block2.check_tools([broken, block2.search_policy_terms]) == block2.FIXED_TOOLS
+        assert block2.check_tools([broken, block2.search_terms]) == block2.FIXED_TOOLS
         out = capsys.readouterr().out
         assert "calling a tool once failed" in out and "rename it in the tool's return line too" in out
 
 
 def test_spot_check_steps_reports_calls_tools_and_cost(capsys):
-    runs = block2.spot_check_steps(block2.final_agent(cl.get_model(effort="low")), "PKG-015")
+    runs = block2.spot_check_steps(block2.final_agent(cl.get_model(effort="low")), "PKG-002")
     out = capsys.readouterr().out
-    assert "PKG-015" in out and "model calls" in out and "output tokens per call" in out and "search_claims_by_invoice" in out
-    assert runs["PKG-015"]["structured_response"].decision == "refer_adjuster"
+    assert "PKG-002" in out and "model calls" in out and "output tokens per call" in out and "search_claims_by_invoice" in out
+    assert runs["PKG-002"]["structured_response"].decision == "refer_adjuster"
 
 
 def test_model_call_limit_ends_the_run_without_an_exception():
     from langchain.agents.middleware import ModelCallLimitMiddleware, ToolCallLimitMiddleware
     agent = block2.final_agent(middleware=[ModelCallLimitMiddleware(run_limit=3, exit_behavior="end"),
                                            ToolCallLimitMiddleware(run_limit=10, exit_behavior="end")])
-    result = block2.run(agent)(cl.load_package("PKG-025"))
+    result = block2.run(agent)(cl.load_package("PKG-007"))
     assert result.get("structured_response") is None
     assert "limit" in result["messages"][-1].text.lower()
 
@@ -89,7 +89,6 @@ def test_exercise_notebook_continues_with_the_reference_when_an_exercise_cell_fa
     text = lambda i: "".join(o.get("text", "") for o in nb.cells[i].outputs)  # noqa: E731
     assert "Continuing with our reference tools" in text(b2 + 2)
     assert "continuing with our checklist, block2.PLAN_PROMPT" in text(c1 + 2)
-    assert "continuing with our eight tools, block2.FINAL_TOOLS" in text(c1 + 2)
 
 
 def test_check_tools_warns_when_a_tool_keeps_its_bad_description(capsys):

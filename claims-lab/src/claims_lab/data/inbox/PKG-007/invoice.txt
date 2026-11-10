@@ -1,0 +1,16 @@
+Garage Zentrum Zug
+INVOICE GZ-2290
+Date: 2026-10-14
+
+Customer: Daniel Kunz
+Vehicle: ZG 45 112
+
+  Front bumper and headlight, new                 2'450.00
+  Paint                                             780.00
+  Labour                                            670.00
+  TOTAL CHF (incl. VAT)                           3'900.00
+
+Remarks of the garage:
+Both front tyres worn to about 1 mm of tread, below the legal minimum of 1.6 mm. Customer informed; new tyres recommended.
+
+Payment within 30 days.

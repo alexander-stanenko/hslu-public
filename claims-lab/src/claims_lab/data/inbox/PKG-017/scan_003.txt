@@ -1,7 +1,0 @@
-Order confirmation — Digitec-Store Zürich
-Order date: 18 February 2025
-Customer: Laura Fischer
-
-Item: Laptop, ProBook 14
-Price: CHF 1'490.00
-Status: delivered

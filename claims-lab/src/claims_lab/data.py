@@ -37,10 +37,10 @@ class Package:
 
 
 def list_packages(split: str = "dev") -> list[str]:
-    """Package IDs of a split: 'dev' (28, for exercises), 'heldout' (12, the final check in notebook 06), 'demo', 'all' (these 41), or
-    'complex' (3 packages that concern several policies, notebook 05)."""
-    if split == "complex":
-        return [l["package_id"] for l in complex_labels()]
+    """Package IDs of a split: 'quick' (PKG-001 to PKG-008), 'dev' (PKG-001 to PKG-016, for the exercises), 'heldout'
+    (PKG-101 to PKG-108, the final check in notebook 06) or 'all' (dev and held-out)."""
+    if split == "quick":
+        return [l["package_id"] for l in labels() if l.get("quick")]
     return [l["package_id"] for l in labels() if split == "all" or l["split"] == split]
 
 
@@ -67,34 +67,27 @@ def labels(split: str | None = None) -> list[dict]:
     return [dict(l) for l in _labels() if split in (None, "all") or l["split"] == split]
 
 
-@lru_cache(maxsize=1)
-def _complex_labels() -> tuple:
-    with open(DATA_DIR / "labels" / "complex.jsonl") as f:
-        return tuple(json.loads(line) for line in f)
-
-
-def complex_labels() -> list[dict]:
-    """Labels of the packages that concern several policies: one expected decision per policy, under 'parts'."""
-    return [json.loads(json.dumps(l)) for l in _complex_labels()]
-
-
 def label(package_id: str) -> dict:
     return next(l for l in labels() if l["package_id"] == package_id)
 
 
-def faq() -> list[dict]:
-    """Customer questions with reference answers (for the chatbot / RAG exercise)."""
-    with open(DATA_DIR / "labels" / "faq.jsonl") as f:
-        return [json.loads(line) for line in f]
+def show_claims(split: str = "quick") -> None:
+    """Print the claims of a split, one line each: the claim, its nickname and the expected decision."""
+    for l in labels():
+        if (split == "quick" and l.get("quick")) or l["split"] == split or split == "all":
+            e = l["expected"]
+            out = e["decision"] + (f" CHF {e['payout_chf']:,.0f}" if e.get("payout_chf") else "") + \
+                (f" ({', '.join(e['missing_items'])})" if e.get("missing_items") else "")
+            print(f"{l['package_id']}  {l['nickname']:<40} expected: {out}")
 
 
-def terms(name: str) -> str:
-    """Full text of a terms document: 'motor', 'household', 'building' or 'claims_guideline'."""
+def terms(name: str = "car_terms") -> str:
+    """Full text of Lakeside's general terms for car insurance (§1 to §4)."""
     return (DATA_DIR / "terms" / f"{name}.md").read_text()
 
 
 def cheat_sheet(show: bool = True) -> str | None:
-    """The clerk's cheat sheet: the 4 possible decisions and the 5 questions a clerk asks, in order.
+    """The clerk's cheat sheet: the 4 possible decisions and the 4 questions a clerk asks, in order.
     show=True displays it (formatted in a notebook); show=False returns the text, e.g. for a system prompt."""
     text = (files("claims_lab") / "cheat_sheet.md").read_text(encoding="utf-8")
     if show:

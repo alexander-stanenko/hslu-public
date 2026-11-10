@@ -1,10 +1,11 @@
-From: Nicole Weber <nicole.weber@mail.example>
+From: Adrian Vogel <adrian.vogel@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-11-04 12:41
-Subject: Claim - documents attached
+Date: 2026-10-10
+Subject: Claim
 
 Hello,
 
-I hit a fox on the road near Willisau on 1 November at night. It ran away so I just drove on. Bumper and fog light repaired, invoice attached. Policy P-10034.
+I damaged the front of my car on 8 October. The invoice from Garage Huber is attached.
 
-Nicole Weber
+Policy P-1107
+Adrian Vogel

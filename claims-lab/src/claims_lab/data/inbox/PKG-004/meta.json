@@ -1,10 +1,9 @@
 {
   "package_id": "PKG-004",
-  "received_at": "2026-10-21T20:56:00",
+  "received_at": "2026-10-02",
   "channel": "email",
-  "sender": "reto.schmid@mail.example",
+  "sender": "thomas.meier@mail.example",
   "attachments": [
-    "Rechnung_DM-0912.txt",
-    "IMG_4920.txt"
+    "invoice.txt"
   ]
 }

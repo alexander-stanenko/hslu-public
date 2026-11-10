@@ -1,11 +1,10 @@
 {
   "package_id": "PKG-211",
-  "received_at": "2026-10-25T20:14:00",
+  "received_at": "2026-10-31",
   "channel": "email",
-  "sender": "sandra.kaelin@mail.example",
+  "sender": "michael.brand@mail.example",
   "attachments": [
-    "Schadenmeldung.txt",
-    "Kaufbeleg_2025-04117.txt",
-    "Offerte_VH-8812.txt"
+    "towing_invoice.txt",
+    "invoice.txt"
   ]
 }

@@ -1,0 +1,12 @@
+Carrosserie Einsiedeln
+INVOICE CE-1480
+Date: 2026-11-02
+
+Customer: Ursula Kälin
+Vehicle: SZ 40 228
+
+  Side window, rear right                           430.00
+  Labour                                            210.00
+  TOTAL CHF (incl. VAT)                             640.00
+
+Payment within 30 days.

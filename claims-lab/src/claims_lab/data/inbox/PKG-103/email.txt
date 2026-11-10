@@ -1,10 +1,11 @@
-From: Sabrina Iten <sabrina.iten@mail.example>
+From: Fabian Imhof <fabian.imhof@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-09-25 16:01
-Subject: Damage report
+Date: 2026-10-21
+Subject: Claim
 
-Dear Sir or Madam,
+Hello,
 
-my car was badly hit by the hailstorm on 14 September. The estimate is attached; the panoramic roof also has to be replaced. Policy P-10037.
+thieves cut the catalytic converter out of my Prius in Altdorf on 19 October. The garage replaced it; invoice attached.
 
-Sabrina Iten
+Policy P-1103
+Fabian Imhof

@@ -1,10 +1,13 @@
-From: Céline Favre <céline.favre@mail.example>
+From: Anna Brunner <anna.brunner@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-17 14:00
-Subject: Claim - documents attached
+Date: 2026-10-22
+Subject: Claim
 
-Dear Lakeside,
+Hello,
 
-my car was stolen yesterday at a petrol station in Bethlehem. The police report is attached. The car was worth about CHF 18,500. Policy P-10023. What happens now? I need a car for work.
+a stone hit my windscreen on the A2 near Sursee on 20 October, and by the next morning the crack ran across the whole screen. Garage Huber replaced it on 22 October. The invoice is attached.
 
-Céline Favre
+Policy number P-1001.
+
+Kind regards
+Anna Brunner

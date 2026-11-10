@@ -1,13 +1,11 @@
-From: Anna Brunner <anna.brunner@mail.example>
+From: Eva Schmid <eva.schmid@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-22 13:43
-Subject: Claim - documents attached
+Date: 2026-09-22
+Subject: Claim
 
-Hello,
+Dear Sir or Madam,
 
-a stone hit my windscreen on the A2 near Sursee on 20 October and by the next morning the crack ran across the whole screen. Garage Huber replaced it on 22 October. The invoice and the claim form are attached.
+my car was outside during the hailstorm on 14 September; the roof has dozens of dents. Carrosserie Solothurn repaired it, invoice attached.
 
-Policy number P-10001.
-
-Kind regards
-Anna Brunner
+Policy P-1012
+Eva Schmid

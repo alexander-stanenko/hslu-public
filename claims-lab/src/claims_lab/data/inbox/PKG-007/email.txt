@@ -1,10 +1,12 @@
-From: Stefan Wyss <stefan.wyss@mail.example>
+From: Daniel Kunz <daniel.kunz@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-20 18:14
-Subject: New claim
+Date: 2026-10-14
+Subject: Claim
 
 Hello,
 
-I reversed into a pillar in the parking garage on 17 October. Rear bumper and parking sensor were repaired by Garage Sonnenberg. My own fault, I have collision cover. Documents attached. P-10012
+on 9 October the road was wet and my car slid into a wall when I braked at a roundabout in Zug. Nobody was hurt. Garage Zentrum repaired the front, the invoice is attached.
 
-Stefan Wyss
+Policy P-1007
+
+Daniel Kunz

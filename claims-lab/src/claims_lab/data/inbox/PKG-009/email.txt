@@ -1,10 +1,12 @@
-From: Patrick Moser <patrick.moser@mail.example>
+From: Nina Weber <nina.weber@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-23 15:46
-Subject: Schadenmeldung
+Date: 2026-09-20
+Subject: Claim
 
-Hello,
+Dear Sir or Madam,
 
-someone scratched the entire driver side of my Audi overnight on 15 October. I filed a report with the Winterthur police (attached) and got a cost estimate from Garage Lindenhof. Policy no. P-10010.
+the hailstorm on 14 September damaged my car badly. Carrosserie St. Gallen has repaired it; the invoice is attached.
 
-Best, Patrick Moser
+My policy number is P-1009.
+
+Nina Weber

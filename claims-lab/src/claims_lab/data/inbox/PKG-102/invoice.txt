@@ -1,0 +1,12 @@
+Garage Schwyz
+INVOICE GS-3301
+Date: 2026-10-15
+
+Customer: Monika Bühler
+Vehicle: SZ 12 904
+
+  Windscreen, new                                 1'050.00
+  Labour                                            400.00
+  TOTAL CHF (incl. VAT)                           1'450.00
+
+Payment within 30 days.

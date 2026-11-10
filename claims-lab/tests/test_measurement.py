@@ -3,7 +3,7 @@ import claims_lab as cl
 from claims_lab.reference import block1
 from claims_lab.scoreboard import _evidence
 
-IDS = ["PKG-012", "PKG-015", "PKG-019"]
+IDS = ["PKG-001", "PKG-002", "PKG-003"]
 
 
 def test_replayed_run_reports_the_recorded_calls(monkeypatch, tmp_path):
@@ -31,7 +31,7 @@ def test_a_rate_limit_is_retried_once(monkeypatch):
 
 def test_failed_claims_are_left_out_of_the_accuracy():
     def half_broken(pkg):
-        if pkg.package_id == "PKG-012":
+        if pkg.package_id == "PKG-001":
             raise ValueError("boom")
         return {"decision": cl.label(pkg.package_id)["expected"]["decision"], "reasoning": "as labelled"}
     cl.scoreboard(half_broken, ids=IDS, show=False, label="half broken")
@@ -40,9 +40,10 @@ def test_failed_claims_are_left_out_of_the_accuracy():
 
 
 def test_issue_matching_needs_a_word_start():
-    calculated = cl.ClaimDecision(decision="fast_track", reasoning="The payout was calculated from the related invoice.")
-    late = cl.ClaimDecision(decision="refer_adjuster", reasoning="Reported 74 days late, after the deadline.")
-    assert not _evidence("late_report", calculated) and _evidence("late_report", late)
-    assert not _evidence("invoice_or_estimate", calculated)
-    listed = cl.ClaimDecision(decision="request_info", missing_items=["invoice_or_estimate"], reasoning="x")
-    assert _evidence("invoice_or_estimate", listed)
+    inside = cl.ClaimDecision(decision="fast_track", reasoning="The garage recommended it; a turnkey repair we trust.")
+    ended = cl.ClaimDecision(decision="decline", reasoning="The policy ended on 30 June, before the hail.")
+    key = cl.ClaimDecision(decision="refer_adjuster", reasoning="The key was left in the ignition.")
+    assert not _evidence("policy_inactive", inside) and _evidence("policy_inactive", ended)     # not "recommended"
+    assert not _evidence("possible_exclusion", inside) and _evidence("possible_exclusion", key)  # not "turnkey", "trust"
+    listed = cl.ClaimDecision(decision="request_info", missing_items=["police_report"], reasoning="x")
+    assert _evidence("police_report", listed) and not _evidence("invoice", listed)

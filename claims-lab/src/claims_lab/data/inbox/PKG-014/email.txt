@@ -1,11 +1,12 @@
-From: Sandra Keller <sandra.keller@mail.example>
+From: Petra Wyss <petra.wyss@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-09-22 21:05
-Subject: New claim
+Date: 2026-10-23
+Subject: Claim
 
-Dear Sir or Madam,
+Hello,
 
-my car was standing outside during the hailstorm on 14 September in Kriens. The roof and the bonnet are full of dents. Carrosserie Kriens made a cost estimate (attached) and can start next week if you agree.
+I scraped a pillar in an underground car park in Thun on 21 October. The rear bumper is repaired, invoice attached.
 
-Policy P-10003
-Sandra Keller
+Policy P-1014
+
+Petra Wyss

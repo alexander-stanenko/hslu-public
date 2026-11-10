@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import logging
 import os
 import threading
 import time
@@ -41,6 +42,16 @@ CACHED_FLAG = "claims_lab_cached"
 
 class BudgetExceeded(RuntimeError):
     """Raised before a model call that would break a spending guard."""
+
+
+class _QuietBudgetStops(logging.Filter):
+    """LangChain logs every exception raised in a callback before passing it on; a spending stop is reported by the
+    code that catches it, so its log line would only repeat the message."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "BudgetExceeded" not in record.getMessage()
+
+
+logging.getLogger("langchain_core.callbacks.manager").addFilter(_QuietBudgetStops())
 
 
 # ------------------------------------------------------------------ shared spending ledger (across processes)
@@ -124,7 +135,8 @@ class CostMeter(BaseCallbackHandler):
                 raise BudgetExceeded(f"Stopped: this run already made {self.started} model calls (limit {self.max_calls}). "
                                      f"The agent is probably stuck in a loop.")
             if self.max_usd is not None and self.cost_usd >= self.max_usd:
-                raise BudgetExceeded(f"Stopped: spending limit of ${self.max_usd:.2f} reached (spent ${self.cost_usd:.4f}). "
+                limit = f"{self.max_usd:.2f}" if self.max_usd >= 0.01 else f"{self.max_usd:.4f}"
+                raise BudgetExceeded(f"Stopped: spending limit of ${limit} reached (spent ${self.cost_usd:.4f}). "
                                      f"Tell the instructor if you need more.")
             est = _estimate_tokens(messages)
             if self.max_input_tokens is not None and est > self.max_input_tokens:

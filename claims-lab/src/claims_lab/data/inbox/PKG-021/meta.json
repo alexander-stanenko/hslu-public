@@ -1,9 +1,0 @@
-{
-  "package_id": "PKG-021",
-  "received_at": "2026-10-27T06:46:00",
-  "channel": "email",
-  "sender": "thomas.meier@mail.example",
-  "attachments": [
-    "scan_001.txt"
-  ]
-}

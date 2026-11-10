@@ -1,9 +1,0 @@
-{
-  "package_id": "PKG-111",
-  "received_at": "2026-10-22T15:31:00",
-  "channel": "email",
-  "sender": "jonas.widmer@mail.example",
-  "attachments": [
-    "Rechnung_GC-7710.txt"
-  ]
-}

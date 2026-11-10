@@ -29,7 +29,7 @@ def _notebook(body: str):
 
 LOOP_HEAD = """
 def run_loop(pkg, max_steps=8):
-    tools_by_name = {t.name: t for t in agent_tools}
+    tools_by_name = {f.__name__: f for f in agent_tools}
     messages = [SystemMessage(SYSTEM_PROMPT), HumanMessage(pkg.text())]
     for step in range(max_steps):
         ai = bound.invoke(messages)
@@ -39,7 +39,7 @@ FINISHED = LOOP_HEAD + """
         if not ai.tool_calls:
             return messages
         for call in ai.tool_calls:
-            result = tools_by_name[call["name"]].invoke(call["args"])
+            result = tools_by_name[call["name"]](**call["args"])
             messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
     return messages
 """
@@ -50,7 +50,7 @@ EMPTY = LOOP_HEAD + """
 """
 NO_STOP = LOOP_HEAD + """
         for call in ai.tool_calls:
-            result = tools_by_name[call["name"]].invoke(call["args"])
+            result = tools_by_name[call["name"]](**call["args"])
             messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
     return messages
 """
@@ -93,14 +93,15 @@ def test_invoice_check_finished_empty_and_wrong():
     assert block1.check_my_invoice_check(lambda facts, policy: None) is block1.check_duplicate_invoice
     declines = lambda facts, policy: cl.ClaimDecision(decision="decline", reasoning="x")  # noqa: E731
     problems = block1._invoice_check_problems(declines)
-    assert any("refer_adjuster" in p for p in problems) and any("PKG-012" in p for p in problems)
+    assert any("refer_adjuster" in p for p in problems) and any("PKG-001" in p for p in problems)
+    assert block1._invoice_check_problems(lambda facts, policy: None) == ["it lets the reused invoice GH-3318 of PKG-002 pass"]
     assert block1._invoice_check_problems(lambda facts, policy: 1 / 0)[0].startswith("it raised ZeroDivisionError")
 
 
 @pytest.mark.parametrize("text,expected", [
     ("Decision: refer_adjuster. The invoice was used before.", "refer_adjuster"),
     ("**Decision:** decline — not covered", "decline"),
-    ("I recommend we fast-track this claim; payout CHF 950.", "fast_track"),
+    ("I recommend we fast-track this claim; payout CHF 650.", "fast_track"),
     ("This claim should be referred to an adjuster.", "refer_adjuster"),
     ("Stopped after 8 steps without a decision.", "no decision (step limit)"),
     ("I am not sure.", "unclear"),

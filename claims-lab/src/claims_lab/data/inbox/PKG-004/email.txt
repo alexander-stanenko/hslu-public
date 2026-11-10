@@ -1,10 +1,10 @@
-From: Reto Schmid <reto.schmid@mail.example>
+From: Thomas Meier <thomas.meier@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-21 20:56
-Subject: New claim
+Date: 2026-10-02
+Subject: Claim
 
 Hello,
 
-the storm on 18 October tore about 30 tiles off our roof. The roofer secured the roof the same night and replaced the tiles on 20 October. Invoice attached. Building policy P-10006.
+my car was standing outside during the hailstorm on 14 September. The roof is full of dents. Carrosserie Kriens repaired it, the invoice is attached. I don't have my policy number at hand.
 
-Regards, Reto Schmid
+Thomas Meier

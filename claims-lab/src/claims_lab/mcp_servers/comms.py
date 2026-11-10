@@ -25,7 +25,7 @@ def list_inbox(split: str = "dev") -> list[str]:
 
 
 class PolicyNumber(BaseModel):
-    policy_id: str = Field(description="Policy number, e.g. P-10001")
+    policy_id: str = Field(description="Policy number, e.g. P-1001")
 
 
 @mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})

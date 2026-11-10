@@ -1,0 +1,12 @@
+AutoGlas Zentral
+INVOICE AZ-41207
+Date: 2026-10-28
+
+Customer: Simon Ott
+Vehicle: AG 330 041
+
+  Windscreen, new                                   610.00
+  Labour                                            280.00
+  TOTAL CHF (incl. VAT)                             890.00
+
+Payment within 30 days.

@@ -1,0 +1,12 @@
+Garage Altdorf
+INVOICE GA-2208
+Date: 2026-10-21
+
+Customer: Fabian Imhof
+Vehicle: UR 7 115
+
+  Catalytic converter, new                        1'500.00
+  Labour                                            450.00
+  TOTAL CHF (incl. VAT)                           1'950.00
+
+Payment within 30 days.

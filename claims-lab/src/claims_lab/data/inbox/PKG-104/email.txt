@@ -1,10 +1,11 @@
-From: Fabio Marchetti <fabio.marchetti@mail.example>
+From: Ursula Kälin <ursula.kälin@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-24 16:38
-Subject: Damage report
+Date: 2026-11-02
+Subject: Claim
 
-Hi,
+Hello,
 
-I touched the garage door with the front bumper on 22 October, invoice from Speedfix attached. Policy P-10040.
+the rear right window of my car broke on 30 October; it has been replaced. Invoice attached.
 
-Fabio
+Policy P-1104
+Ursula Kälin

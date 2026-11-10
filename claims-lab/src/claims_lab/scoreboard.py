@@ -27,26 +27,44 @@ RUNS: dict[str, pd.DataFrame] = {}  # the latest per-claim table of each design,
 # phrases that count as naming an expected issue or missing item. They must start a word ("late" does not match
 # "calculated"); the issues and missing_items lists are checked first, then the reasoning.
 SYNONYMS = {
-    "invoice_before_incident": ["before the incident", "before incident", "predates", "invoice_before", "dated before", "earlier than the incident", "prior to the incident"],
-    "duplicate_invoice": ["duplicate", "already used", "already paid", "same invoice", "reused", "used before"],
-    "frequency": ["frequency", "third claim", "3 claims", "three claims", "3rd", "multiple claims", "claims within 12 months"],
-    "amount_above_typical": ["above typical", "amount_above", "exceeds typical", "inflated", "unusually high", "far above", "price range"],
-    "no_weather_event": ["no weather", "no hail", "no storm", "no event", "weather_event", "not recorded"],
-    "late_report": ["late", "30 days", "reporting deadline", "delay"],
-    "possible_exclusion": ["exclusion", "wear", "maintenance", "gradual", "negligence", "key in the ignition", "unlocked"],
-    "inconsistent_documents": ["inconsistent", "contradict", "mismatch", "rear", "does not match", "discrepanc"],
-    "above_fast_track_limit": ["5,000", "5000", "fast-track limit", "fast_track_limit", "above the limit", "exceeds the limit", "above_fast_track"],
-    "not_covered": ["not covered", "not_covered", "no partial", "liability only", "liability-only", "add-on", "collision module", "not included"],
-    "policy_inactive": ["inactive", "not active", "cancelled", "expired", "ended", "policy_inactive"],
+    "duplicate_invoice": ["duplicate", "already used", "already paid", "same invoice", "reused", "used before", "earlier claim"],
+    "possible_exclusion": ["exclusion", "excluded", "wear", "maintenance", "tread", "tyre", "tire", "rust", "key", "unlocked", "§3"],
+    "above_fast_track_limit": ["5,000", "5000", "5'000", "fast-track limit", "fast_track_limit", "above the limit", "exceeds the limit", "above_fast_track"],
+    "not_covered": ["not covered", "not_covered", "does not cover", "doesn't cover", "only covers", "not included", "not insured"],
+    "policy_inactive": ["inactive", "not active", "not valid", "no longer valid", "expired", "ended", "valid_to", "policy_inactive"],
     "police_report": ["police"],
-    "proof_of_ownership": ["ownership", "receipt", "proof"],
-    "invoice_or_estimate": ["invoice or estimate", "invoice or cost estimate", "repair invoice", "cost estimate", "no invoice", "missing invoice", "estimate", "quote"],
+    "invoice": ["invoice"],
     "policy_id": ["policy number", "policy_id", "policy id", "not identified", "cannot identify", "could not identify", "which policy"],
 }
 
 
+def as_system(x, max_steps: int = 12):
+    """A claims system (package in, decision out) from what the course builds: a function is used as it is; an agent
+    from create_agent gets the package as its user message; the pipeline of notebook 04 gets it in its state."""
+    if not hasattr(x, "invoke") or not hasattr(x, "get_graph"):
+        return x
+    from .models import run_config
+    keys = set(x.get_input_jsonschema().get("properties", {}))
+    if "package" in keys:
+        return lambda pkg: x.invoke({"package": pkg}, config=run_config(25))["decision"]
+    return lambda pkg: x.invoke({"messages": [("user", pkg.text())]}, config=run_config(max_steps))
+
+
+def as_async_system(x, max_steps: int = 12):
+    """Async version of as_system, for agents whose tools are MCP tools (they can only be called asynchronously)."""
+    if not hasattr(x, "ainvoke") or not hasattr(x, "get_graph"):
+        return x
+    from .models import run_config
+
+    async def system(pkg):
+        return await x.ainvoke({"messages": [("user", pkg.text())]}, config=run_config(max_steps))
+    return system
+
+
 def _sample(split: str, n: int | None, ids: list[str] | None) -> list[dict]:
-    pool = [l for l in labels(split) if not ids or l["package_id"] in ids]
+    pool = [l for l in (labels("dev") if split == "quick" else labels(split)) if not ids or l["package_id"] in ids]
+    if split == "quick" and not ids:
+        pool = [l for l in pool if l.get("quick")]
     if ids or n is None or n >= len(pool):
         return pool
     by_cat: dict[str, list] = {}
@@ -85,7 +103,7 @@ def _evidence(tag: str, d: ClaimDecision) -> bool:
 
 def _score(lab: dict, d: ClaimDecision | None, err: str | None) -> dict:
     exp = lab["expected"]
-    row = dict(package=lab["package_id"], category=lab["category"], expected=exp["decision"],
+    row = dict(package=lab["package_id"], claim=lab.get("nickname", ""), category=lab["category"], expected=exp["decision"],
                predicted=d.decision if d else "ERROR", correct=bool(d and d.decision == exp["decision"]))
     row["payout_ok"] = None
     if exp["decision"] == "fast_track":
@@ -125,7 +143,7 @@ def _summarise(rows: list[dict], label: str, seconds: float) -> dict:
 
 
 LEGEND = ("correct: same decision as the experienced clerk; payout_ok: right amount (claims to pay only); "
-          "unsafe_approval: paid although it should not have been; issues_found: share of the expected issues the decision names")
+          "unsafe_approval: paid although it should not have been; llm_calls: model calls for this claim")
 RETRYABLE = ("429", "rate limit", "ratelimit", "timeout", "timed out", "temporarily", "overloaded", "connection")
 
 
@@ -147,14 +165,14 @@ def _report(rows, summary, show: bool):
         print(f"  decision accuracy {s['accuracy']:.0%}, payout accuracy {s['payout_accuracy'] if s['payout_accuracy'] is None else format(s['payout_accuracy'], '.0%')}"
               + (f" (of {pay_n} claim{'s' if pay_n != 1 else ''} to pay)" if pay_n else "")
               + f", unsafe approvals {s['unsafe_approvals']}, issues found {s['issue_recall'] if s['issue_recall'] is None else format(s['issue_recall'], '.0%')}")
-        print(f"  {s['llm_calls_per_pkg']} model calls per claim, ${s['cost_usd_per_pkg']:.4f} per claim "
-              f"(about ${s['cost_usd_per_pkg'] * 10000:,.0f} per 10,000 claims, model calls only), {s['seconds_per_pkg']} s per claim"
+        print(f"  {s['llm_calls_per_pkg']} model calls and {s['seconds_per_pkg']} s per claim"
               + (f", {s['errors']} errors" if s["errors"] else ""))
         print(f"  sent to a person (refer_adjuster): {s['to_person']} of {s['n'] - s['errors']} claims, "
               f"{s['to_person_expected']} expected")
         try:
             from IPython.display import display
-            cols = ["package", "category", "expected", "predicted", "correct", "payout_ok", "unsafe_approval", "issues_found", "llm_calls", "cost_usd", "seconds", "error"]
+            cols = ["package", "claim", "expected", "predicted", "correct", "payout_ok", "unsafe_approval", "llm_calls"]
+            cols += ["error"] if df["error"].notna().any() else []
             from .hslu_palette import HSLU
             warn = HSLU["accents"]["magenta"]["hell1"]
             try:
@@ -167,18 +185,20 @@ def _report(rows, summary, show: bool):
     return df
 
 
-def scoreboard(system, split: str = "dev", n: int | None = 8, ids: list[str] | None = None, concurrency: int = 2,
+def scoreboard(system, split: str = "quick", n: int | None = None, ids: list[str] | None = None, concurrency: int = 2,
                label: str = "run", show: bool = True) -> pd.DataFrame:
-    """Run `system(package) -> ClaimDecision` on labelled packages and score it.
+    """Run a claims system on labelled packages and score it.
 
     Args:
-        system: a function taking a Package and returning a ClaimDecision (or a dict / agent result containing one).
-        split: 'dev' (default) or 'heldout'.
+        system: an agent from create_agent, the pipeline of notebook 04, or a function taking a Package and returning a
+            ClaimDecision (or a dict / agent result containing one).
+        split: 'quick' (default: PKG-001 to PKG-008), 'dev' (PKG-001 to PKG-016) or 'heldout' (PKG-101 to PKG-108).
         n: number of packages (stratified sample; None = all of the split). ids: explicit package IDs instead.
         concurrency: packages processed in parallel (keep it small to respect rate limits).
         label: name of this design, shown in scoreboard_history().
     """
     labs = _sample(split, n, ids)
+    system = as_system(system)
     runnable = RunnableLambda(lambda pkg: system(pkg))
 
     def run_one(lab):
@@ -201,10 +221,11 @@ def scoreboard(system, split: str = "dev", n: int | None = 8, ids: list[str] | N
     return _report(rows, _summarise(rows, label, time.time() - t0), show)
 
 
-async def ascoreboard(system, split: str = "dev", n: int | None = 8, ids: list[str] | None = None, concurrency: int = 2,
+async def ascoreboard(system, split: str = "quick", n: int | None = None, ids: list[str] | None = None, concurrency: int = 2,
                       label: str = "run", show: bool = True) -> pd.DataFrame:
-    """Async version of `scoreboard` for systems defined with `async def` (e.g. agents using MCP tools)."""
+    """Async version of `scoreboard` for agents with MCP tools (or functions defined with `async def`)."""
     labs = _sample(split, n, ids)
+    system = as_async_system(system)
     sem = asyncio.Semaphore(concurrency)
 
     async def call(pkg: Package):
@@ -234,26 +255,30 @@ async def ascoreboard(system, split: str = "dev", n: int | None = 8, ids: list[s
 
 def spot_check(system, *package_ids: str) -> None:
     """Run a system on a few packages and print each decision next to the expected one (no scoreboard entry)."""
+    system = as_system(system)
     for pid in package_ids:
         try:
             d = _to_decision(system(load_package(pid)))
             got, why = d.decision, d.reasoning
         except Exception as e:  # show the problem, keep going
             got, why = "ERROR", f"{type(e).__name__}: {e}"
-        expected = next(l for l in labels() if l["package_id"] == pid)["expected"]["decision"]
-        print(f"{'yes' if got == expected else 'no '} {pid}: {got} (expected {expected})\n{indented(why)}\n")
+        lab = next(l for l in labels() if l["package_id"] == pid)
+        expected = lab["expected"]["decision"]
+        print(f"{'yes' if got == expected else 'no '} {pid} ({lab['nickname']}): {got} (expected {expected})\n{indented(why)}\n")
 
 
 async def aspot_check(system, *package_ids: str) -> None:
-    """Async version of `spot_check` for systems defined with `async def` (e.g. agents using MCP tools)."""
+    """Async version of `spot_check` for agents with MCP tools (or functions defined with `async def`)."""
+    system = as_async_system(system)
     for pid in package_ids:
         try:
             d = _to_decision(await system(load_package(pid)))
             got, why = d.decision, d.reasoning
         except Exception as e:  # show the problem, keep going
             got, why = "ERROR", f"{type(e).__name__}: {e}"
-        expected = next(l for l in labels() if l["package_id"] == pid)["expected"]["decision"]
-        print(f"{'yes' if got == expected else 'no '} {pid}: {got} (expected {expected})\n{indented(why)}\n")
+        lab = next(l for l in labels() if l["package_id"] == pid)
+        expected = lab["expected"]["decision"]
+        print(f"{'yes' if got == expected else 'no '} {pid} ({lab['nickname']}): {got} (expected {expected})\n{indented(why)}\n")
 
 
 def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B")) -> pd.DataFrame:
@@ -261,8 +286,8 @@ def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B"
 
     a, b: the tables returned by scoreboard() or ascoreboard() on the same claims.
     """
-    cols = ["package", "category", "expected", "predicted", "correct", "unsafe_approval", "llm_calls"]
-    m = a[cols].merge(b[cols], on=["package", "category", "expected"], suffixes=(f" {names[0]}", f" {names[1]}"))
+    cols = ["package", "claim", "expected", "predicted", "correct", "unsafe_approval", "llm_calls"]
+    m = a[cols].merge(b[cols], on=["package", "claim", "expected"], suffixes=(f" {names[0]}", f" {names[1]}"))
     ca, cb = m[f"correct {names[0]}"], m[f"correct {names[1]}"]
     m["change"] = ["fixed" if (not x and y) else "broken" if (x and not y) else "" for x, y in zip(ca, cb)]
     return m

@@ -1,10 +1,13 @@
-From: Elena Rossi <elena.rossi@mail.example>
+From: Peter Graf <peter.graf@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-11-02 10:32
-Subject: Claim - documents attached
+Date: 2026-10-13
+Subject: Claim
 
-Hi,
+Dear Lakeside team,
 
-someone kicked off the right side mirror of my Fiat during the night of 30 October. I didn't think it was worth going to the police for a mirror. Garage Huber gave me a quote, see attachment. Policy P-10013.
+a stone chip on the motorway turned into a big crack, so I had the windscreen replaced at Glasprofi Bern. Please find the invoice attached.
 
-Elena Rossi
+Policy P-1003
+
+Best regards,
+Peter Graf

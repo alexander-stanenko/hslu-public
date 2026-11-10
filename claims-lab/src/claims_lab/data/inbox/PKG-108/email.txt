@@ -1,10 +1,11 @@
-From: Livia Zbinden <livia.zbinden@mail.example>
+From: Sabine Roos <sabine.roos@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-11-05 12:37
-Subject: Damage report
+Date: 2026-10-24
+Subject: Claim
 
 Hello,
 
-our dishwasher leaked on 3 November and the kitchen floor and lower cabinets got wet. A repair company is coming and will send the bill later. Photo attached. Policy P-10035.
+I scraped the driver's door on a gate in Zurich on 22 October. Repaired; invoice attached.
 
-Livia Zbinden
+Policy P-1108
+Sabine Roos

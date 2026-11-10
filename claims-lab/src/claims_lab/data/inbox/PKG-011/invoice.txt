@@ -1,0 +1,12 @@
+Garage Emmen
+INVOICE GE-9015
+Date: 2026-10-09
+
+Customer: Reto Baumann
+Vehicle: LU 402 118
+
+  Door lock, ignition and steering column         2'900.00
+  Labour                                          1'300.00
+  TOTAL CHF (incl. VAT)                           4'200.00
+
+Payment within 30 days.

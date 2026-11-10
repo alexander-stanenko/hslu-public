@@ -1,0 +1,12 @@
+Garage Huber AG
+INVOICE GH-4510
+Date: 2026-10-10
+
+Customer: Adrian Vogel
+Vehicle: LU 77 630
+
+  Front bumper and grille                         1'900.00
+  Labour                                            800.00
+  TOTAL CHF (incl. VAT)                           2'700.00
+
+Payment within 30 days.

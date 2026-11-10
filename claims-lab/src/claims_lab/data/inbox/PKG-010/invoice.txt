@@ -1,0 +1,12 @@
+Pneu Basel AG
+INVOICE PB-1834
+Date: 2026-10-15
+
+Customer: Jonas Meyer
+Vehicle: BS 66 301
+
+  4 wheels with winter tyres, new                 2'520.00
+  Fitting                                           280.00
+  TOTAL CHF (incl. VAT)                           2'800.00
+
+Payment within 30 days.

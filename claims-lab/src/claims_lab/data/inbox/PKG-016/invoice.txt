@@ -1,0 +1,12 @@
+Garage Zentrum Zug
+INVOICE GZ-2311
+Date: 2026-10-30
+
+Customer: Claudia Roth
+Vehicle: ZG 61 340
+
+  Side window, front left                           610.00
+  Labour                                            280.00
+  TOTAL CHF (incl. VAT)                             890.00
+
+Payment within 30 days.

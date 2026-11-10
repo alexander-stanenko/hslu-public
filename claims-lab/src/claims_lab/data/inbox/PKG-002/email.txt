@@ -1,10 +1,13 @@
-From: Beat Zimmermann <beat.zimmermann@mail.example>
+From: Marco Rossi <marco.rossi@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-20 21:55
-Subject: Claim - documents attached
+Date: 2026-10-19
+Subject: Claim
 
-Hello,
+Good morning,
 
-the storm on 18 October lifted several sheets of our garage roof. I attach two photos. A roofer will look at it next week; I don't have a quote yet. What do I need to do? Policy P-10016.
+my windscreen cracked on Saturday, 18 October, on the way to Zug. Garage Huber has already replaced it, the invoice is attached.
 
-Beat Zimmermann
+My policy is P-1002.
+
+Thank you
+Marco Rossi

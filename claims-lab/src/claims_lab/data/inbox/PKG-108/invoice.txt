@@ -1,0 +1,12 @@
+Carrosserie Oerlikon
+INVOICE CO-5103
+Date: 2026-10-24
+
+Customer: Sabine Roos
+Vehicle: ZH 902 115
+
+  Door repair and paint                           1'200.00
+  Labour                                            450.00
+  TOTAL CHF (incl. VAT)                           1'650.00
+
+Payment within 30 days.

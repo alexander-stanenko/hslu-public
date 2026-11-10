@@ -1,0 +1,15 @@
+Carrosserie Fribourg
+INVOICE CF-7781
+Date: 2026-09-25
+
+Customer: Kurt Zbinden
+Vehicle: FR 9 774
+
+  Roof and bonnet repair and paint                2'500.00
+  Labour                                            600.00
+  TOTAL CHF (incl. VAT)                           3'100.00
+
+Remarks of the garage:
+Heavy rust on roof edge and bonnet, older than the hail; rust repair included in the panel work.
+
+Payment within 30 days.

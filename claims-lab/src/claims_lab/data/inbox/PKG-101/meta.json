@@ -1,12 +1,9 @@
 {
   "package_id": "PKG-101",
-  "received_at": "2026-10-29T22:19:00",
+  "received_at": "2026-10-28",
   "channel": "email",
-  "sender": "mirjam.odermatt@mail.example",
+  "sender": "simon.ott@mail.example",
   "attachments": [
-    "scan_001.txt",
-    "scan_002.txt",
-    "scan_003.txt",
-    "IMG_8267.txt"
+    "invoice.txt"
   ]
 }

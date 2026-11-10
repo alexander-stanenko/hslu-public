@@ -1,6 +1,6 @@
-"""Search over the policy terms and the internal claims guideline (RAG as a tool).
+"""Search over Lakeside's general terms for car insurance (RAG as a tool).
 
-Chunks are the numbered sections (§) of each document. With provider embeddings configured
+Chunks are the numbered sections (§) of the terms. With provider embeddings configured
 (Azure) we use them; otherwise a local TF-IDF stand-in is used, so it also works offline.
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ import numpy as np
 
 from .data import DATA_DIR
 
-DOCS = {"motor": "motor", "household": "household", "building": "building", "claims_guideline": "guideline"}
+DOCS = {"car_terms": "terms"}
 _index = None
 _lock = threading.Lock()   # parallel tool calls in one process must not build the index twice
 
@@ -26,7 +26,7 @@ def chunks() -> list[dict]:
         for sec in re.split(r"\n(?=## )", text):
             m = re.match(r"## (§\d+) (.*)", sec)
             if m:
-                out.append(dict(source=f"{short} {m.group(1)}", product=short, title=m.group(2).strip(),
+                out.append(dict(source=m.group(1), product=short, title=m.group(2).strip(),
                                 text=sec.split("\n", 1)[1].strip() if "\n" in sec else ""))
     return out
 
@@ -82,14 +82,8 @@ def _build_locked():
     return _index
 
 
-def search_policy_terms(query: str, product: str | None = None, k: int = 3) -> list[dict]:
-    """Return the k most relevant sections of the terms / guideline for a question.
-
-    Args:
-        query: natural-language question, e.g. "deductible for windscreen replacement".
-        product: optional filter: 'motor', 'household', 'building' or 'guideline'.
-        k: number of sections to return.
-    """
+def search(query: str, k: int = 2) -> list[dict]:
+    """Return the k sections of the car terms that fit a question best, e.g. "what is never covered"."""
     kind, cs, mat, model = _index or _build()
     if kind == "provider":
         _embedding_call([query])
@@ -98,5 +92,4 @@ def search_policy_terms(query: str, product: str | None = None, k: int = 3) -> l
     else:
         scores = (mat @ model.transform([query]).T).toarray().ravel()
     order = np.argsort(-scores)
-    hits = [dict(cs[i], score=round(float(scores[i]), 3)) for i in order if product in (None, cs[i]["product"])]
-    return hits[:k]
+    return [dict(cs[i], score=round(float(scores[i]), 3)) for i in order][:k]

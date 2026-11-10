@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import tool
 
 from .. import tools as T
 from ..data import Package
@@ -25,16 +24,6 @@ from ..schemas import ClaimDecision, ClaimFacts
 from . import blank_line_after
 
 FAST_TRACK_LIMIT_CHF = 5000
-
-# Which claim types each module covers. The workflow hard-codes this; an agent would look it up in the terms.
-COVERS = {
-    "motor": {"liability": set(), "partial": {"glass", "hail", "storm", "theft", "fire", "animal_collision", "vandalism"},
-              "collision": {"collision"}},
-    "household": {"basic": {"fire", "hail", "storm", "water_damage", "burglary"}, "theft_outside": {"theft_outside"},
-                  "glass": {"glass_breakage"}},
-    "building": {"basic": {"fire", "hail", "storm", "water_damage"}, "glass": {"glass_breakage"}},
-}
-
 
 # ------------------------------------------------------------------ Part A: the chatbot
 def chatbot(pkg: Package, llm=None) -> ClaimDecision:
@@ -50,24 +39,6 @@ def extract_facts(pkg: Package, llm=None) -> ClaimFacts:
     return llm.with_structured_output(ClaimFacts).invoke("Extract the key facts of this claim package.\n\n" + pkg.text())
 
 
-def is_covered(policy: dict, claim_type: str) -> bool:
-    if policy["product"] == "motor" and claim_type == "glass_breakage":  # a windscreen is "glass" in the motor terms
-        claim_type = "glass"
-    modules = COVERS.get(policy["product"], {})
-    return any(claim_type in modules.get(m, set()) for m, included in policy["modules"].items() if included)
-
-
-def deductible(policy: dict, claim_type: str) -> float:
-    d = policy["deductibles_chf"]
-    if policy["product"] == "motor" and claim_type == "glass_breakage":  # as in is_covered: a windscreen is "glass"
-        claim_type = "glass"
-    if policy["product"] == "motor":
-        return d["glass"] if claim_type == "glass" else d["collision"] if claim_type == "collision" else d["partial"]
-    if policy["product"] == "building" and claim_type in ("hail", "storm"):
-        return d["natural_hazards"]
-    return d["default"]
-
-
 def check_duplicate_invoice(facts: ClaimFacts, policy: dict) -> ClaimDecision | None:
     """Exercise B: an extra check. Returns a decision if the check fails, None if the claim passes."""
     if facts.invoice_no and T.search_claims_by_invoice(facts.invoice_no):
@@ -77,33 +48,37 @@ def check_duplicate_invoice(facts: ClaimFacts, policy: dict) -> ClaimDecision | 
 
 
 def workflow(pkg: Package, llm=None, extra_checks=(check_duplicate_invoice,)) -> ClaimDecision:
-    """Part of the clerk's cheat sheet written as code: extract, policy, active?, covered?, extra checks, pay.
+    """The clerk's cheat sheet written as code: extract, whose policy?, covered that day?, documents there?, extra
+    checks, the limit, pay.
 
-    extra_checks: functions (facts, policy) -> ClaimDecision | None, run after the coverage check (cheat-sheet question 5).
+    extra_checks: functions (facts, policy) -> ClaimDecision | None, run after the documents check (cheat-sheet question 4).
     """
     facts = extract_facts(pkg, llm)
-    if not facts.policy_id:
+    if not facts.policy_id:                                                         # 1 whose policy?
         return ClaimDecision(decision="request_info", missing_items=["policy_id"], reasoning="No policy number in the package.")
     policy = T.lookup_policy(facts.policy_id)
     if "error" in policy:
         return ClaimDecision(decision="request_info", missing_items=["policy_id"], reasoning=policy["error"])
-    if facts.incident_date and not (policy["valid_from"] <= facts.incident_date <= policy["valid_to"]):
+    if facts.damage_date and not policy["valid_from"] <= facts.damage_date <= policy["valid_to"]:   # 2 covered that day?
         return ClaimDecision(decision="decline", issues=["policy_inactive"],
-                             reasoning=f"Policy valid {policy['valid_from']} to {policy['valid_to']}, incident on {facts.incident_date}.")
-    if not is_covered(policy, facts.claim_type):
-        included = [m for m, on in policy["modules"].items() if on]
+                             reasoning=f"Policy valid {policy['valid_from']} to {policy['valid_to']}, damage on {facts.damage_date}.")
+    if facts.damage not in policy["covers"]:
         return ClaimDecision(decision="decline", issues=["not_covered"],
-                             reasoning=f"{facts.claim_type} is not covered by the modules {included}.")
-    for check in extra_checks:
+                             reasoning=f"The policy covers {', '.join(policy['covers'])}, not {facts.damage}.")
+    missing = [d for d in ("invoice", "police_report")                              # 3 documents there?
+               if d not in facts.documents_present and (d == "invoice" or facts.damage == "theft")]
+    if missing:
+        return ClaimDecision(decision="request_info", missing_items=missing, reasoning=f"Missing: {', '.join(missing)}.")
+    for check in extra_checks:                                                      # 4 anything suspicious?
         if (stop := check(facts, policy)) is not None:
             return stop
     amount = facts.amount_chf or 0.0
-    if amount > FAST_TRACK_LIMIT_CHF:
+    if amount > FAST_TRACK_LIMIT_CHF:                                               # the limit
         return ClaimDecision(decision="refer_adjuster", issues=["above_fast_track_limit"],
                              reasoning=f"CHF {amount:,.2f} is above the fast-track limit of CHF {FAST_TRACK_LIMIT_CHF:,}.")
-    payout = T.calc_payout(amount, deductible(policy, facts.claim_type), policy["sum_insured_chf"])
+    payout = T.calc_payout(amount, policy["deductible_chf"])
     return ClaimDecision(decision="fast_track", payout_chf=payout,
-                         reasoning=f"Covered {facts.claim_type} claim of CHF {amount:,.2f}; payout after deductible CHF {payout:,.2f}.")
+                         reasoning=f"{facts.damage} is covered; CHF {amount:,.2f} minus the deductible: CHF {payout:,.2f}.")
 
 
 def naive_workflow(pkg: Package, llm=None) -> ClaimDecision:
@@ -112,32 +87,26 @@ def naive_workflow(pkg: Package, llm=None) -> ClaimDecision:
 
 
 # ------------------------------------------------------------------ Part C: the agent loop, from scratch
-# Four of Lakeside's systems as LangChain tools: each returns its result as JSON text.
-@tool
+# Four of Lakeside's systems as plain Python functions. The name, the arguments and the one-line docstring are all the
+# model learns about a tool; each returns its result as JSON text.
 def lookup_policy(policy_id: str) -> str:
-    """Look up a policy by its number (e.g. 'P-10001'). Returns holder, product (motor/household/building), status,
-    validity dates, included modules (coverage), deductibles in CHF, sum insured in CHF and the insured object."""
-    return json.dumps(T.lookup_policy(policy_id), ensure_ascii=False)
+    """Look up a policy by its number, e.g. 'P-1001'."""
+    return json.dumps(T.lookup_policy(policy_id))
 
 
-@tool
 def get_claim_history(policy_id: str) -> str:
-    """List all earlier claims on a policy (date, type, amount in CHF, status, invoice number, vendor).
-    Use it to check claim frequency and repeated invoices."""
-    return json.dumps(T.get_claim_history(policy_id), ensure_ascii=False)
+    """List the earlier claims on a policy."""
+    return json.dumps(T.get_claim_history(policy_id))
 
 
-@tool
 def search_claims_by_invoice(invoice_no: str) -> str:
-    """Check whether an invoice number was already used in any earlier claim (across all policies).
-    An empty list means the invoice number is new."""
-    return json.dumps(T.search_claims_by_invoice(invoice_no), ensure_ascii=False)
+    """Find earlier claims, on any policy, that used this invoice number."""
+    return json.dumps(T.search_claims_by_invoice(invoice_no))
 
 
-@tool
-def calc_payout(amount_chf: float, deductible_chf: float, sum_insured_chf: float | None = None) -> str:
-    """Payout in CHF = claimed amount (capped at the sum insured, if any) minus the deductible, never below 0."""
-    return json.dumps(T.calc_payout(amount_chf, deductible_chf, sum_insured_chf), ensure_ascii=False)
+def calc_payout(amount_chf: float, deductible_chf: float) -> str:
+    """Payout in CHF: the invoice amount minus the deductible."""
+    return json.dumps(T.calc_payout(amount_chf, deductible_chf))
 
 
 AGENT_TOOLS = [lookup_policy, get_claim_history, search_claims_by_invoice, calc_payout]
@@ -148,6 +117,15 @@ or refer_adjuster (a human must decide). Use the tools to check the policy and t
 Finish with the decision, the payout in CHF if any, and a short reason."""
 
 
+def _name(t) -> str:
+    return getattr(t, "name", None) or t.__name__
+
+
+def _call(t, args: dict):
+    """A plain function is called with the arguments; a LangChain tool (notebook 02) is invoked."""
+    return t.invoke(args) if hasattr(t, "invoke") else t(**args)
+
+
 def run_loop(pkg: Package, llm=None, tools=None, max_steps: int = 8, system_prompt: str = SYSTEM_PROMPT) -> list:
     """The agent loop: ask the model, run the tools it asks for, send the results back, repeat until it answers.
 
@@ -156,7 +134,7 @@ def run_loop(pkg: Package, llm=None, tools=None, max_steps: int = 8, system_prom
     """
     llm = llm or get_model()
     tools = tools or AGENT_TOOLS
-    tools_by_name = {t.name: t for t in tools}
+    tools_by_name = {_name(t): t for t in tools}
     bound = llm.bind_tools(tools)
     messages = [SystemMessage(system_prompt), HumanMessage(pkg.text())]
     for _ in range(max_steps):
@@ -166,8 +144,8 @@ def run_loop(pkg: Package, llm=None, tools=None, max_steps: int = 8, system_prom
             return messages
         for call in ai.tool_calls:                              # run each requested tool, send the result back
             tool = tools_by_name.get(call["name"])
-            result = tool.invoke(call["args"]) if tool else json.dumps({"error": f"Unknown tool {call['name']}"})
-            messages.append(ToolMessage(content=str(result), tool_call_id=call["id"], name=call["name"]))
+            result = _call(tool, call["args"]) if tool else json.dumps({"error": f"Unknown tool {call['name']}"})
+            messages.append(ToolMessage(content=str(result), tool_call_id=call["id"]))
     messages.append(AIMessage(content=f"Stopped after {max_steps} steps without a decision."))
     return messages
 
@@ -182,21 +160,21 @@ def agent(pkg: Package, llm=None, max_steps: int = 8) -> ClaimDecision:
 # ------------------------------------------------------------------ Notebook 01: test an exercise, or continue with ours
 def _invoice_check_problems(check) -> list[str]:
     """What is wrong with a participant's check_duplicate_invoice, tested on two claims without a model call."""
-    reused = ClaimFacts(policy_id="P-10025", claim_type="glass", incident_date="2026-10-19", amount_chf=1150.0,
-                        invoice_no="GH-3318")          # PKG-015: this invoice was already paid
-    fresh = ClaimFacts(policy_id="P-10001", claim_type="glass", incident_date="2026-10-20", amount_chf=1150.0,
-                       invoice_no="GH-4471")           # PKG-012: a new invoice
+    reused = ClaimFacts(policy_id="P-1002", damage="glass", damage_date="2026-10-18", amount_chf=980.0,
+                        invoice_no="GH-3318")          # PKG-002: this invoice was already paid
+    fresh = ClaimFacts(policy_id="P-1001", damage="glass", damage_date="2026-10-20", amount_chf=1150.0,
+                       invoice_no="GH-4471-NEW")       # a new invoice
     problems = []
     try:
-        d = check(reused, T.lookup_policy("P-10025"))
+        d = check(reused, T.lookup_policy("P-1002"))
         if d is None:
-            problems.append("it lets the reused invoice GH-3318 of PKG-015 pass")
+            problems.append("it lets the reused invoice GH-3318 of PKG-002 pass")
         elif not isinstance(d, ClaimDecision):
             problems.append(f"it returns a {type(d).__name__}, not a cl.ClaimDecision or None")
         elif d.decision != "refer_adjuster":
             problems.append(f"it returns {d.decision} for a reused invoice; the cheat sheet says refer_adjuster")
-        if check(fresh, T.lookup_policy("P-10001")) is not None:
-            problems.append("it also stops PKG-012, whose invoice is new")
+        if check(fresh, T.lookup_policy("P-1001")) is not None:
+            problems.append("it also stops PKG-001, whose invoice is new")
     except Exception as e:  # noqa: BLE001 - any error in the participant's code means: use ours
         problems.append(f"it raised {type(e).__name__}: {e}")
     return problems
@@ -204,7 +182,7 @@ def _invoice_check_problems(check) -> list[str]:
 
 @blank_line_after
 def check_my_invoice_check(check):
-    """Notebook 01, Exercise B: test your check on PKG-015 and PKG-012 (no model call). Returns yours if it passes,
+    """Notebook 01, Exercise B: test your check on PKG-002 and PKG-001 (no model call). Returns yours if it passes,
     otherwise our check_duplicate_invoice, with a message."""
     if check is check_duplicate_invoice:          # the cell was run again after it switched to ours
         print("This is our check_duplicate_invoice from claims_lab.reference.block1.")
@@ -240,11 +218,11 @@ def _loop_problems(loop) -> list[str] | None:
     namespace = getattr(loop, "__globals__", None)
     if code is None or namespace is None or "bound" not in code.co_names:
         return None
-    fake, real = _ScriptedModel("P-10001"), namespace.get("bound")
+    fake, real = _ScriptedModel("P-1001"), namespace.get("bound")
     namespace["bound"] = fake
     problems = []
     try:
-        out = loop(load_package("PKG-012"))
+        out = loop(load_package("PKG-001"))
     except Exception as e:  # noqa: BLE001
         return [f"it raised {type(e).__name__}: {e}"]
     finally:
@@ -255,7 +233,7 @@ def _loop_problems(loop) -> list[str] | None:
         results = [m for m in fake.inputs[1] if isinstance(m, ToolMessage) and m.tool_call_id == "test_call_1"]
         if not results:
             problems.append("the tool result does not go back to the model (TODO 2 and 3)")
-        elif "P-10001" not in str(results[0].content):
+        elif "P-1001" not in str(results[0].content):
             problems.append("the message sent back does not contain the tool's result (TODO 2)")
     if len(fake.inputs) > 2:
         problems.append("it does not stop when the model has answered (TODO 1)")
@@ -309,7 +287,7 @@ def run_loop_guarded(pkg: Package, max_steps: int = 8, max_usd: float = 0.01, ll
     from ..costs import BudgetExceeded, CostMeter
     llm = llm or get_model()
     tools = tools or AGENT_TOOLS
-    tools_by_name = {t.name: t for t in tools}
+    tools_by_name = {_name(t): t for t in tools}
     bound = llm.bind_tools(tools)
     meter = CostMeter(max_usd=max_usd)
     messages = [SystemMessage(system_prompt), HumanMessage(pkg.text())]
@@ -321,8 +299,8 @@ def run_loop_guarded(pkg: Package, max_steps: int = 8, max_usd: float = 0.01, ll
                 break
             for call in ai.tool_calls:
                 tool_ = tools_by_name.get(call["name"])
-                result = tool_.invoke(call["args"]) if tool_ else json.dumps({"error": f"Unknown tool {call['name']}"})
-                messages.append(ToolMessage(content=str(result), tool_call_id=call["id"], name=call["name"]))
+                result = _call(tool_, call["args"]) if tool_ else json.dumps({"error": f"Unknown tool {call['name']}"})
+                messages.append(ToolMessage(content=str(result), tool_call_id=call["id"]))
     except BudgetExceeded as e:
         print("stopped:", e)
     print("this run:", meter)
@@ -364,12 +342,12 @@ def check_guarded_loop(loop):
     if "bound" not in code.co_names:
         print("Your run_loop_guarded does not use `bound`, so it cannot be tested offline. Using yours.")
         return loop
-    fake, real = _BudgetScriptedModel("P-10001"), namespace.get("bound")
+    fake, real = _BudgetScriptedModel("P-1001"), namespace.get("bound")
     namespace["bound"] = fake
     problems = []
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            out = loop(load_package("PKG-012"))
+            out = loop(load_package("PKG-001"))
         if not fake.metered or not all(fake.metered):
             problems.append('a model call went out without the meter: pass config={"callbacks": [meter]} on every call')
         if not isinstance(out, list) or not out:

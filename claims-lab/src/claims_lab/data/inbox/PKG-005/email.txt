@@ -1,10 +1,12 @@
-From: Martina Graf <martina.graf@mail.example>
+From: Laura Frei <laura.frei@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-28 18:29
-Subject: Schadenmeldung
+Date: 2026-10-27
+Subject: Claim
 
 Hello,
 
-a cast-iron pot slipped and cracked the glass top of our hob on 26 October. Elektro Suter replaced the glass top, invoice attached. Policy P-10011 (with glass cover).
+someone stole all four wheels of my car in the night of 25 October; it was standing on bricks in front of my house in Aarau. Reifen Express fitted new wheels the next day, invoice attached.
 
-Martina Graf
+Policy P-1005
+
+Laura Frei

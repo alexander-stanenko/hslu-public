@@ -1,0 +1,12 @@
+Garage Huber AG
+INVOICE GH-3318
+Date: 2026-10-19
+
+Customer: Marco Rossi
+Vehicle: ZH 551 902
+
+  Windscreen, new                                   690.00
+  Labour                                            290.00
+  TOTAL CHF (incl. VAT)                             980.00
+
+Payment within 30 days.

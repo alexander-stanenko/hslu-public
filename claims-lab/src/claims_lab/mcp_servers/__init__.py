@@ -8,7 +8,6 @@ import sys
 SERVERS = {
     "claims_systems": "claims_lab.mcp_servers.claims_systems",
     "policy_docs": "claims_lab.mcp_servers.policy_docs",
-    "reference_data": "claims_lab.mcp_servers.reference_data",
     "comms": "claims_lab.mcp_servers.comms",
 }
 

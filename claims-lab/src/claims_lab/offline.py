@@ -24,17 +24,13 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 
 _ids = itertools.count(1)
 
-CLAIM_TYPE_WORDS = [  # first match wins
-    ("theft_outside", ["stolen at", "theft outside", "bike stolen"]), ("burglary", ["burglary", "break-in", "broke in"]),
-    ("theft", ["stolen", "theft"]), ("vandalism", ["vandal", "scratched"]), ("animal_collision", ["deer", "animal", "wildlife"]),
-    ("hail", ["hail"]), ("storm", ["storm", "gust"]), ("water_damage", ["water", "pipe", "leak", "damp"]),
-    ("fire", ["fire", "smoke"]), ("glass", ["windscreen", "windshield", "glass"]), ("collision", ["collision", "pillar", "bumper"]),
+DAMAGE_WORDS = [  # first match wins
+    ("theft", ["stolen", "stole", "theft"]), ("hail", ["hail"]), ("glass", ["windscreen", "windshield", "glass", "window"]),
+    ("collision", ["collision", "crash", "bumper", "accident", "drove into"]),
 ]
 
 DOC_TYPE_WORDS = [  # first match wins, on the file name
-    ("email", ["email"]), ("police_report", ["polizei", "police"]), ("purchase_receipt", ["quittung", "receipt"]),
-    ("estimate", ["offerte", "estimate", "kv-"]), ("invoice", ["rechnung", "invoice", "garage", "scan_002", "scan_003"]),
-    ("claim_form", ["schadenmeldung", "claim_form", "scan_001"]), ("photo_note", ["img", "photo"]),
+    ("email", ["email"]), ("police_report", ["police"]), ("invoice", ["invoice"]),
 ]
 
 
@@ -47,26 +43,22 @@ def _facts(text: str) -> dict:
     f: dict[str, Any] = {}
     if m := re.search(r"\b(PKG-\d{3})\b", text):
         f["package_id"] = m.group(1)
-    if m := re.search(r"\b(P-\d{5})\b", text):
+    if m := re.search(r"\b(P-\d{4})\b", text):
         f["policy_id"] = m.group(1)
     if m := re.search(r"\b(?!PKG-|CHE-)([A-Z]{2,4}-\d{3,6})\b", text):  # invoice numbers look like GH-4471
         f["invoice_no"] = m.group(1)
     amounts = [float(a.replace("'", "").replace(",", "")) for a in re.findall(r"CHF\s*(\d[\d',]*(?:\.\d{2})?)", text)]
-    amounts += [float(a.replace("'", "")) for a in re.findall(r"TOTAL\D{0,12}([\d']+\.\d{2})", text, re.I)]
+    amounts += [float(a.replace("'", "")) for a in re.findall(r"TOTAL[^\d\n]*([\d']+\.\d{2})", text, re.I)]
     if amounts:
         f["amount_chf"] = max(amounts)
-    if m := re.search(r"(?:incident|loss|damage)[^\n:]{0,20}:\s*(\d{1,2})\.(\d{1,2})\.(\d{4})", text, re.I):
-        f["incident_date"] = f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
-    elif m := re.search(r"(?:incident|loss|damage)[^\n:]{0,20}:\s*(\d{4}-\d{2}-\d{2})", text, re.I):
-        f["incident_date"] = m.group(1)
-    if m := re.search(r"\b(\d{4})\s+[A-ZÄÖÜ][a-zäöüé]+", text):
-        f["postcode"] = m.group(1)
-    if m := re.search(r"(?:Policyholder|Name)\s*:\s*([A-ZÄÖÜ][^\n,]+)", text):
-        f["name"] = m.group(1).strip()
-    elif m := re.search(r"From:\s*([^<\n]+?)\s*<", text):
-        f["name"] = m.group(1).strip()
+    if m := re.search(r"Date of the event:\s*(\d{4}-\d{2}-\d{2})", text):
+        f["damage_date"] = m.group(1)
+    if m := re.search(r"\b([A-Z]{2} \d{2,3} \d{3})\b", text):
+        f["plate"] = m.group(1)
+    if m := re.search(r"From:\s*([^<\n]+?)\s*<", text):
+        f["name"] = f["customer_name"] = m.group(1).strip()
     low = text.lower()
-    f["claim_type"] = next((t for t, words in CLAIM_TYPE_WORDS if any(w in low for w in words)), "other")
+    f["damage"] = next((t for t, words in DAMAGE_WORDS if any(w in low for w in words)), "other")
     docs = []  # document types, from the '=== filename ===' headers of a package
     for name in re.findall(r"^=== (.+?) ===$", text, re.M):
         n = name.lower()
@@ -101,13 +93,6 @@ def _fill(schema: dict, text: str, defs: dict | None = None, messages: list[Base
     defs = defs or schema.get("$defs", {})
     if "$ref" in schema:
         return _fill(defs[schema["$ref"].split("/")[-1]], text, defs, messages)
-    if schema.get("title") == "PolicyDecisions" or set(schema.get("properties", {})) == {"decisions"}:  # one decision per policy number in the text (notebook 05, Part E)
-        ids = list(dict.fromkeys(re.findall(r"\b(P-\d{5})\b", text)))
-        return {"decisions": [dict(_decision(text, messages), policy_id=pid) for pid in ids]}
-    if set(schema.get("properties", {})) == {"parts"}:  # the parts of a package, one per policy (notebook 05, Part E)
-        docs = [n for n in re.findall(r"^=== (.+?) ===", text, re.M)]
-        return {"parts": [{"policy_id": pid, "what": "offline", "documents": docs}
-                          for pid in dict.fromkeys(re.findall(r"\b(P-\d{5})\b", text))]}
     if schema.get("title") == "ClaimDecision" or set(schema.get("properties", {})) >= {"decision", "reasoning"}:
         d = _decision(text, messages)
         return dict(d, policy_id=_facts(text).get("policy_id", "unknown")) if "policy_id" in schema.get("properties", {}) else d
@@ -139,9 +124,7 @@ def _course_tool_args(name: str, f: dict) -> dict | None:
         "find_policies": {"name": f["name"]} if not pid and f.get("name") else None,
         "get_claim_history": {"policy_id": pid} if pid else None,
         "search_claims_by_invoice": {"invoice_no": inv} if inv else None,
-        "search_policy_terms": {"query": f"{f['claim_type']} cover"},
-        "check_weather": ({"postcode": f["postcode"], "date": f["incident_date"]}
-                          if f["claim_type"] in ("hail", "storm") and f.get("postcode") and f.get("incident_date") else None),
+        "search_terms": {"query": f"what is never covered for {f['damage']}"},
     }.get(name)
 
 
@@ -152,11 +135,10 @@ def _question(spec: dict, f: dict) -> dict | None:
     if not spec["name"].startswith("ask_") or len(required) != 1 or props.get(required[0], {}).get("type") != "string":
         return None
     facts = [f"Claim {f.get('package_id', '')}", f"policy {f['policy_id']}" if f.get("policy_id") else
-             f"customer {f.get('name', 'unknown')}", f"claim type {f['claim_type']}",
-             f"incident date: {f['incident_date']}" if f.get("incident_date") else "",
+             f"customer {f.get('name', 'unknown')}", f"damage {f['damage']}",
+             f"date of the damage: {f['damage_date']}" if f.get("damage_date") else "",
              f"amount CHF {f['amount_chf']:.2f}" if f.get("amount_chf") else "",
-             f"invoice {f['invoice_no']}" if f.get("invoice_no") else "",
-             f"postcode {f['postcode']} Area" if f.get("postcode") else ""]
+             f"invoice {f['invoice_no']}" if f.get("invoice_no") else ""]
     return {required[0]: "; ".join(x for x in facts if x) + ". What do you find?"}
 
 

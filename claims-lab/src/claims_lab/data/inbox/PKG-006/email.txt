@@ -1,10 +1,12 @@
-From: Nils Lehmann <nils.lehmann@mail.example>
+From: Sara Huber <sara.huber@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-07 14:42
+Date: 2026-10-08
 Subject: Claim
 
 Hello,
 
-hail damage from the storm in Bern on 3 October, estimate attached. Policy P-10020.
+I reversed into a concrete post in a car park in Oerlikon on 3 October. Carrosserie Oerlikon has repaired the rear, the invoice is attached.
 
-Nils Lehmann
+Policy P-1006
+
+Sara Huber

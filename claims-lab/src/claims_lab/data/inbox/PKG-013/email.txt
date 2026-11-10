@@ -1,11 +1,12 @@
-From: Lukas Steiner <lukas.steiner@mail.example>
+From: Luca Bernasconi <luca.bernasconi@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-28 20:58
-Subject: Schadenmeldung
+Date: 2026-10-20
+Subject: Claim
 
-Good day,
+Buongiorno,
 
-small chip in the windscreen of my Skoda (BE 77 412) from 27 October, already repaired by Glasprofi Bern. Invoice attached. My policy is P-10002.
+I hit a bollard while parking in Lugano on 17 October. The front bumper had to be replaced; the invoice is attached.
 
-Best regards,
-Lukas Steiner
+Policy P-1013
+
+Luca Bernasconi

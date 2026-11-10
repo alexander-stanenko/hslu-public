@@ -1,0 +1,13 @@
+Garage Lugano Sud
+INVOICE GL-0771
+Date: 2026-10-20
+
+Customer: Luca Bernasconi
+Vehicle: TI 88 214
+
+  Front bumper, new                               1'350.00
+  Paint                                             520.00
+  Labour                                            430.00
+  TOTAL CHF (incl. VAT)                           2'300.00
+
+Payment within 30 days.

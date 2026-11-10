@@ -1,0 +1,12 @@
+Carrosserie Solothurn
+INVOICE CS-5531
+Date: 2026-09-22
+
+Customer: Eva Schmid
+Vehicle: SO 51 772
+
+  Paintless dent repair, roof                     2'700.00
+  Labour                                            720.00
+  TOTAL CHF (incl. VAT)                           3'420.00
+
+Payment within 30 days.

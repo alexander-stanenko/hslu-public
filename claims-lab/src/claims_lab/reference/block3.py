@@ -4,9 +4,9 @@
     block3.write_server()                                   # catch-up for Part A: writes lakeside_server.py
     server = block3.load_server("lakeside_server.py")       # (re)import the file, fall back to ours if it is broken
     await block3.show_wire(server)                          # the JSON-RPC messages of tools/list and one tools/call
-    async with block3.mcp_session() as tools:               # Lakeside's three read-only servers, one session each
-        await cl.aspot_check(block3.arun(block3.mcp_agent(tools)), "PKG-012", "PKG-015", "PKG-019")
-    agent = await block3.intake_agent(answers={"policy_id": "P-10014"})   # Part C
+    async with block3.mcp_session() as tools:               # Lakeside's two read-only servers, one session each
+        await cl.aspot_check(block3.mcp_agent(tools), "PKG-001", "PKG-002", "PKG-003")
+    agent = await block3.intake_agent(answers={"policy_id": "P-1004"})    # Part C
 """
 from __future__ import annotations
 
@@ -46,16 +46,15 @@ mcp = FastMCP("lakeside-policies", instructions="Policy look-ups for Lakeside In
 
 @mcp.tool
 def lookup_policy(policy_id: str) -> dict:
-    """Look up an insurance policy by its policy number (format 'P-10001'). Returns the holder, product
-    (motor/household/building), status, validity dates, the included modules (what is covered), deductibles in CHF
-    and the sum insured in CHF."""
+    """Look up a policy by its number (format 'P-1001'). Returns the holder, the car and its plate, the kinds of
+    damage the policy covers ('covers'), the deductible in CHF and the dates between which the policy is valid."""
     return tools.lookup_policy(policy_id)
 
 
 @mcp.tool
 def get_claim_history(policy_id: str) -> list[dict]:
-    """List all earlier claims on a policy (policy number 'P-10001'): date, claim type, amount in CHF, status,
-    invoice number and vendor. Use it to spot repeated claims and reused invoice numbers."""
+    """List the earlier claims on a policy (policy number 'P-1001'): date, kind of damage, amount in CHF, invoice
+    number, garage and status. Use it to see whether this damage or this invoice was claimed before."""
     return tools.get_claim_history(policy_id)
 
 
@@ -116,17 +115,17 @@ def server_file(path: str | Path = "lakeside_server.py") -> str:
 def _add_terms(server) -> None:
     from .. import data
 
-    @server.resource("terms://{product}")
-    def terms(product: str) -> str:
-        """Full terms and conditions of a product: motor, household or building."""
-        return data.terms(product)
+    @server.resource("terms://car")
+    def terms() -> str:
+        """Lakeside's general terms for car insurance in full (§1 to §4)."""
+        return data.terms()
 
 
 def _add_prompt(server) -> None:
     @server.prompt
     def review_claim(package_id: str) -> str:
         """Instruction for reviewing one claim package with the clerk's cheat sheet."""
-        return (f"Review claim package {package_id}. Work through the five questions of the clerk's cheat sheet in order "
+        return (f"Review claim package {package_id}. Work through the four questions of the clerk's cheat sheet in order "
                 f"and decide: fast_track, request_info, refer_adjuster or decline. Give the reason.")
 
 
@@ -139,10 +138,10 @@ def add_terms_and_prompt(server) -> None:
 async def ensure_terms_and_prompt(server) -> None:
     """After Exercise A3: add our version of whatever is missing (the resource, the prompt), with a message."""
     async with Client(server) as c:
-        has_terms = "terms://{product}" in [t.uriTemplate for t in await c.list_resource_templates()]
+        has_terms = "terms://car" in [str(r.uri) for r in await c.list_resources()]
         has_prompt = "review_claim" in [p.name for p in await c.list_prompts()]
     if not has_terms:
-        print("Your server has no resource terms://{product} yet; we add ours so that you can continue.")
+        print("Your server has no resource terms://car yet; we add ours so that you can continue.")
         _add_terms(server)
     if not has_prompt:
         print("Your server has no prompt review_claim yet; we add ours so that you can continue.")
@@ -216,7 +215,7 @@ async def show_wire(server, tool: str = "lookup_policy", arguments: dict | None 
     tap = WireTap(server)
     async with Client(tap) as c:
         await c.list_tools()
-        await c.call_tool(tool, arguments if arguments is not None else {"policy_id": "P-10001"})
+        await c.call_tool(tool, arguments if arguments is not None else {"policy_id": "P-1001"})
     msgs = tap.messages
     print("All messages, in order:", ", ".join(m.get("method", "result") + (" ->" if d.startswith("client") else " <-")
                                                 for d, m in msgs), "\n")
@@ -239,7 +238,7 @@ async def show_wire(server, tool: str = "lookup_policy", arguments: dict | None 
 
 
 # ------------------------------------------------------------------ Part B: the checklist agent over MCP
-READ_SERVERS = ["claims_systems", "policy_docs", "reference_data"]
+READ_SERVERS = ["claims_systems", "policy_docs"]
 
 
 async def mcp_tools(names: list[str] | None = None) -> list:
@@ -275,7 +274,7 @@ async def time_sessions(connection: dict, tool: str = "lookup_policy", arguments
                         calls: int = 3) -> None:
     """Time `calls` tool calls twice, and print both times: without a session (a new server process per call) and
     in one session."""
-    arguments = arguments if arguments is not None else {"policy_id": "P-10001"}
+    arguments = arguments if arguments is not None else {"policy_id": "P-1001"}
     client = MultiServerMCPClient({"server": connection})
     start = time.perf_counter()
     t = next(t for t in await client.get_tools() if t.name == tool)
@@ -364,14 +363,14 @@ async def check_bridge(bridge_fn, server):
                 if differ:
                     problem = f"the description of {differ[0]} is not the server's"
                 else:
-                    got = str(await by_name["lookup_policy"].ainvoke({"policy_id": "P-10001"}))
-                    if "P-10001" not in got:
-                        problem = f"lookup_policy('P-10001') returned {got[:80]!r}, not the policy"
+                    got = str(await by_name["lookup_policy"].ainvoke({"policy_id": "P-1001"}))
+                    if "P-1001" not in got:
+                        problem = f"lookup_policy('P-1001') returned {got[:80]!r}, not the policy"
         except Exception as e:  # noqa: BLE001
             problem = f"{type(e).__name__}: {e}"
     if problem:
         print(f"Your bridge is not finished yet ({problem}).\nThe cells below use ours, block3.mcp_to_langchain.")
         return mcp_to_langchain
-    print(f"Your bridge passes: the same {len(ours)} tools and descriptions as the server's, and lookup_policy('P-10001') "
+    print(f"Your bridge passes: the same {len(ours)} tools and descriptions as the server's, and lookup_policy('P-1001') "
           f"returns the policy:\n  {got[:160]}...")
     return bridge_fn

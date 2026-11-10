@@ -1,10 +1,11 @@
-From: Daniel Huber <daniel.huber@mail.example>
+From: Kurt Zbinden <kurt.zbinden@mail.example>
 To: claims@lakeside-insurance.example
-Date: 2026-10-20 09:43
-Subject: Schadenmeldung
+Date: 2026-09-25
+Subject: Claim
 
 Hello,
 
-during the storm on 18 October a large branch fell on my parked Volvo. Estimate attached. Policy P-10033.
+the hail on 14 September damaged my car's roof and bonnet. The repair invoice is attached.
 
-Daniel Huber
+Policy P-1105
+Kurt Zbinden
