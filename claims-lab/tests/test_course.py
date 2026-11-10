@@ -86,7 +86,7 @@ def test_empty_picks_are_not_saved_and_saved_picks_print_a_paste_line(capsys):
 
 def test_block_6_has_one_row_per_design_with_ranges():
     rows = [r for r in course.REFERENCE_RUNS if r["block"] == 6 and "held-out" not in r["label"]]
-    assert [r["label"] for r in rows] == ["colleague's tools", "described tools", "checklist agent",
+    assert [r["label"] for r in rows] == ["vague tools", "described tools", "checklist agent",
                                           "checklist agent over MCP", "hybrid pipeline", "claims team"]
     assert all(r["runs"] >= 3 and isinstance(r["correct"], str) for r in rows)
     assert len([r for r in course.REFERENCE_RUNS if "held-out" in r["label"]]) == 3

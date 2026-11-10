@@ -133,7 +133,7 @@ FINAL_TOOLS = FIXED_TOOLS + [find_policies]
 
 PLAN_PROMPT = """You are a claims handler at Lakeside Insurance AG. Work through these four questions in order; the
 first "no" decides the claim. Use the tools for every check; never guess and never calculate in your head.
-1. Whose policy is it? lookup_policy; without a number, find_policies by name and plate.
+1. Is the policy known? lookup_policy; without a number, find_policies by name and plate.
    No single match → request_info (policy_id).
 2. Does the policy cover this damage on that day? The date of the damage must lie between valid_from and valid_to,
    and the kind of damage must be in covers. If not → decline.

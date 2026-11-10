@@ -45,7 +45,7 @@ TOOL_SPLIT = {
     "coverage_analyst": ["lookup_policy", "find_policies", "search_terms", "calc_payout"],
     "red_flag_checker": ["get_claim_history", "search_claims_by_invoice"],
 }
-STEP = {"lookup_policy": "1 whose policy", "find_policies": "1 whose policy (no number)", "search_terms": "2-3 cover, documents",
+STEP = {"lookup_policy": "1 policy known", "find_policies": "1 policy known (no number)", "search_terms": "2-3 cover, documents",
         "calc_payout": "payout", "get_claim_history": "4 claimed before?", "search_claims_by_invoice": "4 invoice used before"}
 NEEDED = {"coverage_analyst": {"lookup_policy", "find_policies", "search_terms"},
           "red_flag_checker": {"get_claim_history", "search_claims_by_invoice"}}
@@ -53,7 +53,7 @@ NEEDED = {"coverage_analyst": {"lookup_policy", "find_policies", "search_terms"}
 COVERAGE_PROMPT = """You are the coverage analyst in Lakeside Insurance AG's claims team. The team's supervisor asks you
 about one claim; you do not see the claim package, only the question. Use your tools for every fact; never guess and
 never calculate in your head.
-1. Whose policy is it? lookup_policy; without a number, find_policies by name and plate. No single match: say so.
+1. Is the policy known? lookup_policy; without a number, find_policies by name and plate. No single match: say so.
 2. Does the policy cover this damage on that day (valid_from, valid_to, covers)?
 3. Which documents does this kind of damage need (search_terms)?
 4. If asked, the payout with calc_payout.
@@ -67,7 +67,7 @@ Check whether the invoice number was used before (search_claims_by_invoice) and 
 SUPERVISOR_PROMPT = """You are the supervisor of Lakeside Insurance AG's claims team. You read the claim package and decide
 the claim. You have no system access of your own: ask your two specialists. They do not see the package, so give each
 one the facts it needs in your question.
-- ask_coverage_analyst: whose policy, whether it covers the damage on that day, the documents needed, the payout.
+- ask_coverage_analyst: whether the policy is known, whether it covers the damage on that day, the documents needed, the payout.
 - ask_red_flag_checker: whether the invoice was used before, the claim history.
 Then decide with the clerk's four questions; the first "no" decides:
 1. No single policy identified → request_info (policy_id).
@@ -160,7 +160,7 @@ class _Recorder(BaseCallbackHandler):
             self.runs.append(dict(self._open.pop(run_id), messages=outputs["messages"], end=time.time()))
 
 
-COVERAGE_DESCRIPTION = ("Ask Lakeside's coverage analyst about one claim: whose policy it is, whether it covers the damage "
+COVERAGE_DESCRIPTION = ("Ask Lakeside's coverage analyst about one claim: whether the policy is known, whether it covers the damage "
                         "on that day, which documents are needed, and the payout. The analyst does not see the claim "
                         "package: give the policy number (or the holder's name and the plate), the kind of damage, the date "
                         "of the damage, the invoice amount and the documents present.")

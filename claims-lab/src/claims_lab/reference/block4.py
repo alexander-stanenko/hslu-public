@@ -115,7 +115,7 @@ def rule_checks(state: ClaimState) -> dict:
     f = state["facts"]
     policy = {}
     stop = lambda decision, reason, **kw: {"policy": policy, "findings": [{"decision": decision, "reason": reason, **kw}]}
-    # 1 whose policy? By number, or by name and plate with exactly one match
+    # 1 policy known? By number, or by name and plate with exactly one match
     pid = f.policy_id
     if not pid and f.customer_name:
         matches = T.find_policies(name=f.customer_name, plate=f.plate)

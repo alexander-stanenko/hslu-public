@@ -83,7 +83,7 @@ def _design(label, n, runs, correct, unsafe, accuracy, unsafe_approvals, calls, 
             "unsafe_approvals": unsafe_approvals, "llm_calls_per_pkg": calls, "cost_usd_per_pkg": cost}
 
 
-_BAD = _design("colleague's tools", 8, 4, "3 to 5", "2 to 4", 0.53, 2.8, 2.8, 0.0024)
+_BAD = _design("vague tools", 8, 4, "3 to 5", "2 to 4", 0.53, 2.8, 2.8, 0.0024)
 _FIXED = _design("described tools", 8, 5, "4 to 5", "1 to 3", 0.57, 1.6, 3.4, 0.0037)
 _CHECKLIST = _design("checklist agent", 8, 4, "6 to 7", "1 to 2", 0.81, 1.5, 3.1, 0.0040)
 _MCP = _design("checklist agent over MCP", 8, 3, "7 in every run", "1 in every run", 0.88, 1.0, 3.1, 0.0039)

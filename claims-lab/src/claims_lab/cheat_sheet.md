@@ -19,7 +19,7 @@ The first "no" decides the claim.
 
 | # | Question | If the answer is no | Where a clerk looks |
 |---|---|---|---|
-| 1 | Whose policy is it? The policy number, or the name and the car's plate. | Ask for the policy number | Policies |
+| 1 | Is the policy known? The package gives a policy number that exists, or the name and the car's plate match exactly one policy. | Ask for the policy number | Policies |
 | 2 | Is the damage covered on that day? The date lies between the policy's start and end, and the kind of damage is one the policy covers. | Decline | Policies |
 | 3 | Are the documents there? An invoice for every repair; for a theft also a police report. | Ask, naming what is missing | The package |
 | 4 | Does everything look normal? | Refer to an adjuster | Earlier claims, the documents, the terms |

@@ -48,13 +48,13 @@ def check_duplicate_invoice(facts: ClaimFacts, policy: dict) -> ClaimDecision | 
 
 
 def workflow(pkg: Package, llm=None, extra_checks=(check_duplicate_invoice,)) -> ClaimDecision:
-    """The clerk's cheat sheet written as code: extract, whose policy?, covered that day?, documents there?, extra
+    """The clerk's cheat sheet written as code: extract, policy known?, covered that day?, documents there?, extra
     checks, the limit, pay.
 
     extra_checks: functions (facts, policy) -> ClaimDecision | None, run after the documents check (cheat-sheet question 4).
     """
     facts = extract_facts(pkg, llm)
-    if not facts.policy_id:                                                         # 1 whose policy?
+    if not facts.policy_id:                                                         # 1 policy known?
         return ClaimDecision(decision="request_info", missing_items=["policy_id"], reasoning="No policy number in the package.")
     policy = T.lookup_policy(facts.policy_id)
     if "error" in policy:
