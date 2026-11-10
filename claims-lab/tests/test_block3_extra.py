@@ -142,3 +142,48 @@ def test_time_sessions_prints_both_ways(tmp_path, capsys):
     asyncio.run(block3.time_sessions(mcp_servers.script_connection(str(path)), calls=2))
     out = capsys.readouterr().out
     assert "without a session" in out and "in one session" in out
+
+
+def test_ensure_approve_payout_keeps_a_working_tool_and_replaces_one_that_does_not_ask(capsys):
+    """Notebook 03, Extra 1: ours replaces a missing or unfinished approve_payout; a working one stays."""
+    from fastmcp import Context
+    from fastmcp.client.elicitation import ElicitResult
+
+    async def calls(server):
+        asked = []
+
+        async def approve(message, response_type, params, context):
+            asked.append(message)
+            return ElicitResult(action="accept")
+        async with Client(server, elicitation_handler=approve) as c:
+            low = await c.call_tool("approve_payout", {"package_id": "PKG-001", "invoice_chf": 1150})
+            high = await c.call_tool("approve_payout", {"package_id": "PKG-006", "invoice_chf": 8600})
+        return asked, low.data, high.data
+
+    missing = FastMCP("missing")
+    asyncio.run(block3.ensure_approve_payout(missing))
+    assert "no tool approve_payout" in capsys.readouterr().out
+    asked, low, high = asyncio.run(calls(missing))
+    assert len(asked) == 1 and low.startswith("approved:") and high.startswith("approved by a person")
+
+    unfinished = FastMCP("unfinished")
+
+    @unfinished.tool
+    async def approve_payout(package_id: str, invoice_chf: float, ctx: Context) -> str:
+        if invoice_chf <= 5000:
+            return "approved"
+    asyncio.run(block3.ensure_approve_payout(unfinished))
+    assert "returns nothing above CHF 5,000" in capsys.readouterr().out
+    assert len(asyncio.run(calls(unfinished))[0]) == 1
+
+    working = FastMCP("working")
+
+    @working.tool
+    async def approve_payout(package_id: str, invoice_chf: float, ctx: Context) -> str:  # noqa: F811
+        if invoice_chf <= 5000:
+            return "fine"
+        answer = await ctx.elicit("approve?", response_type=None)
+        return "yes" if answer.action == "accept" else "no"
+    asyncio.run(block3.ensure_approve_payout(working))
+    assert "not finished" not in capsys.readouterr().out
+    assert asyncio.run(calls(working))[1:] == ("fine", "yes")

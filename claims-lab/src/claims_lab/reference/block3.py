@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 import anyio
-from fastmcp import Client, FastMCP
+from fastmcp import Client, Context, FastMCP
 from fastmcp.client.transports import FastMCPTransport
 from langchain.agents import create_agent
 from langchain_core.tools import StructuredTool
@@ -377,5 +377,60 @@ async def check_bridge(bridge_fn, server):
 
 
 # Notebook 03, Extra 2: our text for the prompt the server offers, used when the participant's REVIEW_PROMPT is empty.
-REVIEW_PROMPT = ("Review claim package {package_id}. Work through the four questions of the clerk's cheat sheet in order "
-                 "and decide: fast_track, request_info, refer_adjuster or decline. Give the reason.")
+REVIEW_PROMPT = """Review claim package {package_id} for Lakeside Insurance AG. Answer four questions in order, each with a tool; the first "no" decides.
+1. Is the policy known? lookup_policy, or find_policies by name and plate. No single match: request_info.
+2. Is the damage covered on that day? The date lies between valid_from and valid_to, and the kind of damage is in covers. No: decline.
+3. Are the documents there? An invoice for every repair; for a theft also a police report. No: request_info.
+4. Does everything look normal? search_claims_by_invoice for an invoice used before, search_terms for what the terms exclude. No: refer_adjuster.
+If all four pass: above CHF 5,000 refer_adjuster, otherwise fast_track with the payout from calc_payout. Give the reason."""
+
+# Notebook 03, Extra 2: the assistant without our instructions, as in a host like Claude Desktop
+GENERIC_PROMPT = "You are a helpful assistant. You can use the tools of the systems you are connected to."
+
+
+# ------------------------------------------------------------------ Notebook 03, Extra 1: the server asks for approval
+LIMIT_CHF = 5000
+
+
+def _add_approve_payout(server) -> None:
+    @server.tool
+    async def approve_payout(package_id: str, invoice_chf: float, ctx: Context) -> str:
+        """Get the approval for paying a claim. Up to CHF 5,000 the claim is approved at once; above, a person decides."""
+        if invoice_chf <= LIMIT_CHF:
+            return f"approved: the invoice of CHF {invoice_chf:,.0f} on {package_id} is within the fast-track limit"
+        answer = await ctx.elicit(f"{package_id}: the invoice of CHF {invoice_chf:,.0f} is above the CHF 5,000 limit. "
+                                  "Approve the payment?", response_type=None)
+        if answer.action == "accept":
+            return f"approved by a person: the invoice of CHF {invoice_chf:,.0f} on {package_id}"
+        return f"NOT approved: the invoice of CHF {invoice_chf:,.0f} on {package_id} goes to an adjuster"
+
+
+async def ensure_approve_payout(server) -> None:
+    """Keep the participant's approve_payout if it asks above the limit and answers below it; otherwise use ours."""
+    from fastmcp.client.elicitation import ElicitResult
+    asked = []
+
+    async def decline(message, response_type, params, context):
+        asked.append(message)
+        return ElicitResult(action="decline")
+
+    problem = None
+    try:
+        async with Client(server, elicitation_handler=decline) as c:
+            if "approve_payout" not in [t.name for t in await c.list_tools()]:
+                problem = "your server has no tool approve_payout"
+            else:
+                low = await c.call_tool("approve_payout", {"package_id": "PKG-001", "invoice_chf": 950})
+                await c.call_tool("approve_payout", {"package_id": "PKG-006", "invoice_chf": 8600})
+                if len(asked) != 1:   # once: for the invoice above the limit only
+                    problem = "it should ask above CHF 5,000 and only there"
+                elif not low.data:
+                    problem = "it returns nothing up to CHF 5,000"
+    except Exception as e:  # noqa: BLE001 - any error in the participant's tool means: use ours
+        problem = ("it returns nothing above CHF 5,000" if "None is not of type" in str(e)
+                   else f"{type(e).__name__}: {str(e).splitlines()[0][:120]}")
+    if problem:
+        print(f"approve_payout is not finished yet ({problem}), so this cell uses ours.\n")
+        if "no tool" not in problem:
+            server.local_provider.remove_tool("approve_payout")
+        _add_approve_payout(server)
