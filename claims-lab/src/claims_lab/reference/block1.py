@@ -179,14 +179,15 @@ def _run_tool(call) -> str:
         return json.dumps({"error": f"Bad arguments for {call.function.name}: {e}"})
 
 
-def run_loop(pkg: Package, max_steps: int = 8, client=None) -> list:
+def run_loop(pkg: Package, max_steps: int = 8, client=None, system: str = SYSTEM_PROMPT) -> list:
     """The agent loop: ask the model, run the tools it asks for, send the results back, repeat until it answers.
 
     max_steps stops a confused agent (an agent without a limit can loop, and every step re-sends the whole history).
+    system is the system prompt (notebook 01's extra task adds a line to it).
     Returns the full list of messages (cl.show_trace prints it).
     """
     client = client or get_client()
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": pkg.text()}]
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": pkg.text()}]
     for step in range(max_steps):
         response = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS)
         reply = response.choices[0].message
