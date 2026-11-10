@@ -230,42 +230,50 @@ def answer_text(messages: list) -> str | None:
 
 
 # ------------------------------------------------------------------ Notebook 01: test an exercise, or continue with ours
-def _invoice_check_problems(check) -> list[str]:
-    """What is wrong with a participant's check_duplicate_invoice, tested on two claims without a model call."""
+def _invoice_check_problems(check) -> tuple[str | None, list[str]]:
+    """A participant's check_duplicate_invoice, tested on two claims without a model call. Returns (why it cannot be
+    used, or None; where it differs from the cheat sheet)."""
     reused = ClaimFacts(policy_id="P-1002", damage="glass", damage_date="2026-10-18", amount_chf=980.0,
                         invoice_no="GH-3318")          # PKG-002: this invoice was already paid
     fresh = ClaimFacts(policy_id="P-1001", damage="glass", damage_date="2026-10-20", amount_chf=1150.0,
                        invoice_no="GH-4471-NEW")       # a new invoice
-    problems = []
     try:
-        d = check(reused, T.lookup_policy("P-1002"))
-        if d is None:
-            problems.append("it lets the reused invoice GH-3318 of PKG-002 pass")
-        elif not isinstance(d, ClaimDecision):
-            problems.append(f"it returns a {type(d).__name__}, not a cl.ClaimDecision or None")
-        elif d.decision != "refer_adjuster":
-            problems.append(f"it returns {d.decision} for a reused invoice; the cheat sheet says refer_adjuster")
-        if check(fresh, T.lookup_policy("P-1001")) is not None:
-            problems.append("it also stops PKG-001, whose invoice is new")
+        d, d_fresh = check(reused, T.lookup_policy("P-1002")), check(fresh, T.lookup_policy("P-1001"))
     except Exception as e:  # noqa: BLE001 - any error in the participant's code means: use ours
-        problems.append(f"it raised {type(e).__name__}: {e}")
-    return problems
+        return f"it raised {type(e).__name__}: {e}", []
+    if wrong := [x for x in (d, d_fresh) if x is not None and not isinstance(x, ClaimDecision)]:
+        return f"it returns a {type(wrong[0]).__name__}, not a cl.ClaimDecision or None", []
+    if d is None and d_fresh is None:
+        return "it lets the reused invoice GH-3318 of PKG-002 pass", []
+    notes = []
+    if d is None:
+        notes.append("it lets the reused invoice GH-3318 of PKG-002 pass")
+    elif d.decision != "refer_adjuster":
+        notes.append(f"it returns {d.decision} for a reused invoice; the cheat sheet says refer_adjuster")
+    if d_fresh is not None:
+        notes.append("it also stops PKG-001, whose invoice is new")
+    return None, notes
 
 
 @blank_line_after
 def check_my_invoice_check(check):
-    """Notebook 01, Exercise B: test your check on PKG-002 and PKG-001 (no model call). Returns yours if it passes,
-    otherwise our check_duplicate_invoice, with a message."""
+    """Notebook 01, Exercise B: test your check on PKG-002 and PKG-001 (no model call). An unfinished check (an error,
+    no decision for either claim) is replaced by our check_duplicate_invoice, with a message; a finished one is used,
+    with a note where it differs from the cheat sheet."""
     if check is check_duplicate_invoice:          # the cell was run again after it switched to ours
         print("This is our check_duplicate_invoice from claims_lab.reference.block1.")
         return check
-    problems = _invoice_check_problems(check)
-    if not problems:
+    problem, notes = _invoice_check_problems(check)
+    if problem:
+        print(f"Your check_duplicate_invoice is not finished yet ({problem}). "
+              "Using our version from claims_lab.reference.block1.")
+        return check_duplicate_invoice
+    if notes:
+        print(f"Your check_duplicate_invoice differs from the cheat sheet ({'; '.join(notes)}). Using yours: the "
+              "results below show what it changes.")
+    else:
         print("Your check_duplicate_invoice passes our test (reused invoice referred, new invoice passes). Using yours.")
-        return check
-    print(f"Your check_duplicate_invoice is not finished yet ({'; '.join(problems)}). "
-          "Using our version from claims_lab.reference.block1.")
-    return check_duplicate_invoice
+    return check
 
 
 class _ScriptedClient:

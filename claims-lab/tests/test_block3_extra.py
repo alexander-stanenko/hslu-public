@@ -187,3 +187,23 @@ def test_ensure_approve_payout_keeps_a_working_tool_and_replaces_one_that_does_n
     asyncio.run(block3.ensure_approve_payout(working))
     assert "not finished" not in capsys.readouterr().out
     assert asyncio.run(calls(working))[1:] == ("fine", "yes")
+
+
+def test_check_approval_server_keeps_a_finished_server_and_replaces_an_unfinished_one(tmp_path, capsys):
+    """Notebook 03, Extra 1: the skeleton (returns nothing above the limit) is replaced; a server that also asks below
+    the limit is kept, with a note."""
+    skeleton = block3.APPROVAL_SOURCE.split("    answer = await ctx.elicit")[0] + "\n"
+    (tmp_path / "approval_server.py").write_text(skeleton)
+    assert asyncio.run(block3.check_approval_server(tmp_path / "approval_server.py")).endswith("approval_server_ours.py")
+    assert "returns nothing above CHF 5,000" in capsys.readouterr().out
+
+    always = block3.APPROVAL_SOURCE.replace("    if invoice_chf <= 5000:", "    if invoice_chf <= 0:")
+    assert always != block3.APPROVAL_SOURCE
+    (tmp_path / "approval_server.py").write_text(always)
+    assert asyncio.run(block3.check_approval_server(tmp_path / "approval_server.py")).endswith("approval_server.py")
+    out = capsys.readouterr().out
+    assert "also asks for PKG-001" in out and "uses yours" in out
+
+    (tmp_path / "approval_server.py").write_text(block3.APPROVAL_SOURCE)
+    assert asyncio.run(block3.check_approval_server(tmp_path / "approval_server.py")).endswith("approval_server.py")
+    assert capsys.readouterr().out == ""

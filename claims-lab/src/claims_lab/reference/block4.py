@@ -177,24 +177,34 @@ def rule_checks(state: ClaimState) -> dict:
 
 
 def test_limit_check(check_fn):
-    """Notebook 04, B2 (Build): try a limit check on CHF 8,600 and CHF 1,150. An unfinished one (an error, or no finding
-    above the limit) is replaced by ours, with a message. Returns the function to use."""
+    """Notebook 04, B2 (Build): try a limit check on CHF 8,600 and CHF 1,150. An unfinished one (an error, no finding
+    for either amount, or a finding the pipeline cannot read) is replaced by ours, with a message. A finished one is used
+    even where it differs from the cheat sheet; the lines marked "no" show where. Returns the function to use."""
     if check_fn is check_fast_track_limit:
         print("This is our check, block4.check_fast_track_limit.")
     cases = [(8600.0, True), (1150.0, False)]
+    decisions = set(ClaimDecision.model_fields["decision"].annotation.__args__)
     try:
         results = [check_fn(Facts(damage="collision", amount_chf=amount), {}) for amount, _ in cases]
-        ok = all(bool(r) == fails and (not r or r.get("decision") == "refer_adjuster") for r, (_, fails) in zip(results, cases))
-        problem = None if ok else "it does not return a refer_adjuster finding above CHF 5,000 only"
+        unreadable = [r for r in results if r and not (isinstance(r, dict) and r.get("decision") in decisions and "reason" in r)]
+        problem = ("it returns no finding for either amount" if not any(results) else
+                   f"it returns {unreadable[0]!r}; a finding is a dict with a decision and a reason, as in the other checks"
+                   if unreadable else None)
     except Exception as e:  # noqa: BLE001  (any error in the participant's code)
         problem = _why(e)
     if problem:
         print(f"Explore path, or the check not finished: the cells below use ours, block4.check_fast_track_limit. "
               f"(Details for Build: {problem}.)")
         check_fn = check_fast_track_limit
+    right = True
     for amount, fails in cases:
         r = check_fn(Facts(damage="collision", amount_chf=amount), {})
-        print(f"CHF {amount:>7,.0f}: {'refer_adjuster' if r else 'passes':<15} {'yes' if bool(r) == fails else 'no'}")
+        ok = bool(r) == fails and (not r or r["decision"] == "refer_adjuster")
+        right &= ok
+        print(f"CHF {amount:>7,.0f}: {r['decision'] if r else 'passes':<15} {'yes' if ok else 'no'}")
+    if not right:
+        print("Your check differs from the cheat sheet (above CHF 5,000 refer_adjuster, otherwise pass). The cells "
+              "below use yours, so the scoreboard in Part D shows what it changes.")
     return check_fn
 
 

@@ -28,21 +28,41 @@ def test_reference_split_gives_out_every_tool_once_and_no_write_tool():
 
 
 @pytest.mark.parametrize("bad,reason", [
-    ({"coverage_analyst": [], "red_flag_checker": []}, "empty"),
+    ({"coverage_analyst": [], "red_flag_checker": []}, "both lists are empty"),
+    ({**B.TOOL_SPLIT, "red_flag_checker": []}, "the red flag checker's list is empty"),
     ({**B.TOOL_SPLIT, "coverage_analyst": B.TOOL_SPLIT["coverage_analyst"] + ["record_decision"]}, "write tool"),
-    ({**B.TOOL_SPLIT, "coverage_analyst": B.TOOL_SPLIT["coverage_analyst"] + ["get_claim_history"]}, "both specialists"),
-    ({**B.TOOL_SPLIT, "red_flag_checker": B.TOOL_SPLIT["red_flag_checker"][:1]}, "not given to anyone"),
     ({**B.TOOL_SPLIT, "coverage_analyst": B.TOOL_SPLIT["coverage_analyst"] + ["lookup_customer"]}, "unknown tool names"),
-    ({"coverage_analyst": ["lookup_policy", "find_policies", "calc_payout", "get_claim_history"],
-      "red_flag_checker": ["search_claims_by_invoice", "search_terms"]},
-     "cannot do its checks without search_terms"),
     ({"someone": ["lookup_policy"]}, "keys"),
 ])
-def test_wrong_splits_fall_back_to_ours_with_the_reason(bad, reason, capsys):
+def test_splits_the_team_cannot_run_with_fall_back_to_ours_with_the_reason(bad, reason, capsys):
     split = B.check_split(bad)
     out = capsys.readouterr().out
-    assert reason in out and "block5.TOOL_SPLIT" in out
+    assert reason in out and "not finished" in out and "block5.TOOL_SPLIT" in out and "Yes:" not in out
     assert [t.name for t in split["coverage_analyst"]] == B.TOOL_SPLIT["coverage_analyst"]
+
+
+@pytest.mark.parametrize("mine,note", [
+    ({**B.TOOL_SPLIT, "red_flag_checker": B.TOOL_SPLIT["red_flag_checker"] + ["lookup_policy"]},
+     "lookup_policy goes to both specialists"),
+    ({**B.TOOL_SPLIT, "red_flag_checker": B.TOOL_SPLIT["red_flag_checker"][:1]}, "search_claims_by_invoice goes to no one"),
+    ({"coverage_analyst": ["lookup_policy", "find_policies", "calc_payout"],
+      "red_flag_checker": ["get_claim_history", "search_claims_by_invoice", "search_terms"]},
+     "search_terms goes to the red flag checker"),
+    ({"coverage_analyst": ["lookup_policy", "find_policies", "search_terms"],
+      "red_flag_checker": ["get_claim_history", "search_claims_by_invoice", "calc_payout"]},
+     "The scoreboard counts decisions, not payouts"),
+])
+def test_a_split_that_differs_from_ours_is_used_with_a_note(mine, note, capsys):
+    split = B.check_split(mine)
+    out = capsys.readouterr().out
+    assert note in out and "differs from ours" in out and "use yours" in out and "(ours: " in out
+    assert {s: [t.name for t in split[s]] for s in B.SPECIALISTS} == mine
+
+
+def test_each_specialist_prompt_names_the_tools_of_our_split():
+    for s, prompt in B.PROMPTS.items():
+        assert all(n in prompt for n in B.NAMED[s]), s
+        assert not any(n in prompt for n in set(B.TOOLS) - B.NAMED[s]), s
 
 
 def test_the_team_keeps_the_block2_rules_and_adds_none():
@@ -79,6 +99,29 @@ def test_unfinished_wrapper_falls_back_and_a_good_one_is_checked_without_a_model
     assert "Yes:" in capsys.readouterr().out
     answer = ask_red_flag_checker.invoke({"question": "Invoice GH-3318 on policy P-1002: used before?"})
     assert "refer_adjuster" in answer and "already used" in answer   # offline, the checker ran search_claims_by_invoice
+
+
+def test_a_finished_wrapper_with_a_thin_description_is_used_with_a_note(capsys):
+    red_flags = B.red_flag_checker()
+
+    @tool
+    def ask_red_flag_checker(query: str) -> str:
+        """Ask the fraud checker."""
+        return red_flags.invoke({"messages": [("user", query)]})["messages"][-1].text
+    assert B.check_ask_tool(ask_red_flag_checker, red_flags) is ask_red_flag_checker
+    out = capsys.readouterr().out
+    assert "differs from ours" in out and "use yours" in out and "short" in out and "few of the facts" in out
+    assert "ours takes one argument, question" in out
+
+
+def test_a_finished_comms_tool_with_other_arguments_is_used_with_a_note(capsys):
+    @tool
+    def ask_customer_comms(claim: str, items: list[str]) -> str:
+        """Ask customer comms for a draft letter to the customer about the missing documents of a claim; sends nothing."""
+        return f"Dear customer, please send {', '.join(items)} for {claim}."
+    assert B.check_comms_tool(ask_customer_comms) is ask_customer_comms
+    out = capsys.readouterr().out
+    assert "differs from ours" in out and "COMMS_PROMPT_LINE" in out
 
 
 def test_not_a_tool_falls_back(capsys):

@@ -433,16 +433,19 @@ if __name__ == "__main__":
 
 
 async def check_approval_server(path: str | Path = "approval_server.py") -> str:
-    """Notebook 03, Extra 1: the participant's server file if its approve_payout asks above CHF 5,000 and only
-    there; otherwise our version, written next to it as approval_server_ours.py. Returns the file to start."""
+    """Notebook 03, Extra 1: the participant's server file if its approve_payout runs and asks for the CHF 8,600 claim,
+    with a note where it differs from the cheat sheet; otherwise (an error, no tool, it never asks) our version, written
+    next to it as approval_server_ours.py. Returns the file to start."""
     path = Path(path)
     try:
         server = _import_server(path)
     except Exception as e:  # noqa: BLE001
-        problem = f"{type(e).__name__}: {str(e).splitlines()[0][:120]}"
+        problem, notes = f"{type(e).__name__}: {str(e).splitlines()[0][:120]}", []
     else:
-        problem = await _approval_problem(server)
+        problem, notes = await _approval_problem(server)
     if not problem:
+        if notes:
+            print(f"{path.name} differs from the cheat sheet ({'; '.join(notes)}). This cell uses yours.\n")
         return str(path)
     ours = path.with_name("approval_server_ours.py")
     ours.write_text(APPROVAL_SOURCE, encoding="utf-8")
@@ -450,8 +453,9 @@ async def check_approval_server(path: str | Path = "approval_server.py") -> str:
     return str(ours)
 
 
-async def _approval_problem(server) -> str | None:
-    """Why the server's approve_payout is not finished, or None if it asks above the limit and only there."""
+async def _approval_problem(server) -> tuple[str | None, list[str]]:
+    """Why the server's approve_payout cannot be used (None if it can), and where it differs from the cheat sheet
+    (up to CHF 5,000 approved at once, above a person asked)."""
     from fastmcp.client.elicitation import ElicitResult
     asked = []
 
@@ -461,17 +465,21 @@ async def _approval_problem(server) -> str | None:
     try:
         async with Client(server, elicitation_handler=decline) as c:
             if "approve_payout" not in [t.name for t in await c.list_tools()]:
-                return "the server has no tool approve_payout"
+                return "the server has no tool approve_payout", []
             low = await c.call_tool("approve_payout", {"package_id": "PKG-001", "invoice_chf": 1150})
+            asked_low = len(asked)
             await c.call_tool("approve_payout", {"package_id": "PKG-006", "invoice_chf": 8600})
     except Exception as e:  # noqa: BLE001
         return ("it returns nothing above CHF 5,000" if "None is not of type" in str(e)
-                else f"{type(e).__name__}: {str(e).splitlines()[0][:120]}")
-    if len(asked) != 1:
-        return "it should ask above CHF 5,000 and only there"
+                else f"{type(e).__name__}: {str(e).splitlines()[0][:120]}"), []
+    if len(asked) == asked_low:
+        return "it does not ask above CHF 5,000", []
+    notes = []
+    if asked_low:
+        notes.append("it also asks for PKG-001, CHF 1,150; up to CHF 5,000 the cheat sheet approves at once")
     if not low.data:
-        return "it returns nothing up to CHF 5,000"
-    return None
+        notes.append("it returns nothing for PKG-001, CHF 1,150")
+    return None, notes
 
 
 async def ensure_approve_payout(server) -> None:

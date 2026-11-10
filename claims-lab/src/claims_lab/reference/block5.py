@@ -47,8 +47,8 @@ TOOL_SPLIT = {
 }
 STEP = {"lookup_policy": "1 policy known", "find_policies": "1 policy known (no number)", "search_terms": "2-3 cover, documents",
         "calc_payout": "payout", "get_claim_history": "4 claimed before?", "search_claims_by_invoice": "4 invoice used before"}
-NEEDED = {"coverage_analyst": {"lookup_policy", "find_policies", "search_terms"},
-          "red_flag_checker": {"get_claim_history", "search_claims_by_invoice"}}
+# The tools each specialist's prompt names (COVERAGE_PROMPT, RED_FLAG_PROMPT below): the prompt tells it to use them.
+NAMED = {s: set(names) for s, names in TOOL_SPLIT.items()}
 
 COVERAGE_PROMPT = """You are the coverage analyst in Lakeside Insurance AG's claims team. The team's supervisor asks you
 about one claim; you do not see the claim package, only the question. Use your tools for every fact; never guess and
@@ -89,42 +89,72 @@ def _why(e: Exception) -> str:
     return f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
 
 
+def _who(s: str) -> str:
+    return s.replace("_", " ")
+
+
 def _split_problem(split) -> str | None:
+    """Why a split cannot be used at all (unfinished, unknown names, a write tool); None if the team can run with it."""
     if not isinstance(split, dict) or set(split) != set(SPECIALISTS):
         return f"it needs exactly the keys {list(SPECIALISTS)}"
-    names = [n for s in SPECIALISTS for n in (split[s] or [])]
-    if not names:
+    if not any(split[s] for s in SPECIALISTS):
         return "both lists are empty"
+    if empty := [s for s in SPECIALISTS if not split[s]]:
+        return f"the {_who(empty[0])}'s list is empty"
+    names = [n for s in SPECIALISTS for n in split[s]]
     if bad := sorted({n for n in names if n in WRITE_TOOL_NAMES}):
         return f"{', '.join(bad)} is a write tool: it sends an e-mail or records a decision, and no agent in the team gets one"
     if unknown := sorted({n for n in names if n not in TOOLS}):
         return f"unknown tool names {unknown}; the six tools are {sorted(TOOLS)}"
-    if twice := sorted({n for n in names if names.count(n) > 1}):
-        return f"{', '.join(twice)} is given to both specialists; each tool goes to the one whose checks need it"
-    if missing := sorted(set(TOOLS) - set(names)):
-        return f"{', '.join(missing)} is not given to anyone, so its check would not happen"
-    for s in SPECIALISTS:
-        if wrong := sorted(NEEDED[s] - set(split[s])):
-            return f"the {s.replace('_', ' ')} cannot do its checks without {', '.join(wrong)}"
     return None
+
+
+def _split_notes(split) -> list[str]:
+    """Where a usable split differs from ours, and what that may cost in the runs (no model call)."""
+    notes = []
+    for n in TOOLS:
+        owners = [s for s in SPECIALISTS if n in split[s]]
+        named = next(s for s in SPECIALISTS if n in NAMED[s])
+        if not owners:
+            notes.append(f"{n} goes to no one: the {_who(named)}'s prompt tells it to use {n}, so it has to answer "
+                         f"that part without it.")
+        elif named not in owners:
+            notes.append(f"{n} goes to the {_who(owners[0])}, whose prompt never names it; the {_who(named)}'s prompt "
+                         f"tells it to use {n}, so it has to answer that part without it.")
+        elif len(owners) > 1:
+            other = next(s for s in owners if s != named)
+            notes.append(f"{n} goes to both specialists; the {_who(other)}'s prompt never names it, so it adds a tool "
+                         f"description to every request of that specialist and may go unused.")
+    if "calc_payout" not in split["coverage_analyst"]:
+        notes.append("The supervisor pays with the payout the coverage analyst computed. The scoreboard counts "
+                     "decisions, not payouts: look at the payouts in the Part C traces.")
+    return notes
 
 
 @blank_line_after
 def check_split(split, tools: dict | None = None) -> dict[str, list[BaseTool]]:
     """Exercise A1: check a split of the six tools from notebook 02 between the two specialists, print it as a table and
-    return {specialist: [tools]}. An unfinished or wrong split is replaced by ours, with the reason. tools maps each name
-    to the tool to hand out (the notebook's own copies); by default the reference tools."""
+    return {specialist: [tools]}. A split the team cannot run with (unfinished, unknown names, a write tool) is
+    replaced by ours, with the reason; any other split is used, with a note on each place where it differs from ours.
+    tools maps each name to the tool to hand out (the notebook's own copies); by default the reference tools."""
     if split is TOOL_SPLIT:
         print("This is our split, block5.TOOL_SPLIT.")
     problem = _split_problem(split)
     if problem:
-        print(f"Your split is not finished or not right yet ({problem}).\nThe cells below use ours, block5.TOOL_SPLIT.\n")
+        print(f"Your split is not finished yet ({problem}).\nThe cells below use ours, block5.TOOL_SPLIT.\n")
         split = TOOL_SPLIT
+    elif notes := _split_notes(split):
+        print("Your split differs from ours, block5.TOOL_SPLIT. The cells below use yours; Part C runs it live and shows "
+              "what it costs.", *[f"  - {n}" for n in notes], "", sep="\n")
     else:
-        print("Yes: every tool has exactly one owner, every check has its tools, and no agent can send or pay.\n")
+        print("Yes: every tool has exactly one owner, each specialist has the tools its prompt names, and no agent can "
+              "send or pay.\n")
+    ours = {n: s for s in SPECIALISTS for n in TOOL_SPLIT[s]}
     for s in SPECIALISTS:
         for n in split[s]:
-            print(f"  {s.replace('_', ' '):<18} {n:<26} checklist step {STEP[n]}")
+            print(f"  {_who(s):<18} {n:<26} {STEP[n]:<28}{'' if ours[n] == s else '(ours: ' + _who(ours[n]) + ')'}")
+    for n in sorted(set(TOOLS) - {n for s in SPECIALISTS for n in split[s]}):
+        print(f"  {'no one':<18} {n:<26} {STEP[n]:<28}(ours: {_who(ours[n])})")
     tools = tools or TOOLS
     return {s: [tools[n] for n in split[s]] for s in SPECIALISTS}
 
@@ -211,9 +241,10 @@ def _is_ours(candidate) -> bool:
 
 
 def check_ask_tool(candidate, red_flags=None) -> BaseTool:
-    """Exercise B1: check your ask_red_flag_checker without running it: it must be a tool that takes a question, with a
-    description the supervisor can act on. An unfinished wrapper is replaced by ours, with the reason."""
-    problem = None
+    """Exercise B1: check your ask_red_flag_checker without running it. An unfinished wrapper (not a tool, a TODO
+    description, no argument, no body) is replaced by ours, with the reason. A finished one is used, with a note where it
+    differs from ours (a short description, few of the facts the checker needs, other arguments)."""
+    problem, notes = None, []
     if _is_ours(candidate):                        # the cell was run again after it switched to ours
         print("This is our ask_red_flag_checker from claims_lab.reference.block5.")
         return candidate
@@ -221,22 +252,33 @@ def check_ask_tool(candidate, red_flags=None) -> BaseTool:
         problem = "it is not a tool (is @tool missing?)"
     else:
         text = (candidate.description or "").lower()
-        if "todo" in text or len(text) < 60:
-            problem = "its description is still empty or very short; the supervisor chooses and phrases its question from it"
-        elif sum(w in text for w in ("invoice", "policy", "claim", "earlier", "number", "history", "amount")) < 3:
-            problem = ("its description should say what the checker checks and which facts it needs, because the checker "
-                       "does not see the package")
-        elif list(candidate.args) != ["question"]:
-            problem = f"it takes {list(candidate.args)}; it should take one argument, question"
+        if "todo" in text or not text.strip():
+            problem = "its description is still the TODO; the supervisor chooses and phrases its question from it"
+        elif not candidate.args:
+            problem = "it takes no argument; the supervisor's question has to reach the checker"
         elif _body_missing(candidate):
             problem = "its body is not written yet; it should put the question to red_flags and return the answer"
+        else:
+            if len(text) < 60:
+                notes.append("its description is short; the supervisor chooses and phrases its question from it")
+            if sum(w in text for w in ("invoice", "policy", "claim", "earlier", "number", "history", "amount", "date",
+                                       "damage")) < 3:
+                notes.append("its description names few of the facts the checker needs (policy number, invoice number, "
+                             "kind of damage, amount, date); the checker does not see the package, so the supervisor may "
+                             "send too little. Watch its questions in the next run")
+            if list(candidate.args) != ["question"]:
+                notes.append(f"it takes {list(candidate.args)}, ours takes one argument, question; the supervisor fills "
+                             f"in what the argument names and descriptions ask for")
     if problem:
         print(f"Your ask_red_flag_checker is not finished yet ({problem}).\nThe cells below use ours, with this description:\n"
               f"  {RED_FLAG_DESCRIPTION}")
         ours = ask_tool(red_flags or red_flag_checker(), "ask_red_flag_checker", _RED_FLAG_DOCSTRING)
         ours.metadata = {**(ours.metadata or {}), "course_reference": True}
         return ours
-    print(f"Yes: {candidate.name} is a tool that takes a question, and its description names what the checker needs.")
+    if notes:
+        print(f"Your {candidate.name} differs from ours. The cells below use yours:", *[f"  - {n}." for n in notes], sep="\n")
+    else:
+        print(f"Yes: {candidate.name} is a tool that takes a question, and its description names what the checker needs.")
     return candidate
 
 
@@ -439,28 +481,36 @@ def comms_tool(letters=None, writer=None) -> BaseTool:
 
 @blank_line_after
 def check_comms_tool(candidate, writer=None) -> BaseTool:
-    """Notebook 05, extra task: check your ask_customer_comms without running it (no model call). An unfinished tool is
-    replaced by ours, block5.comms_tool(writer=writer), with the reason."""
+    """Notebook 05, extra task: check your ask_customer_comms without running it (no model call). An unfinished tool (not
+    a tool, a TODO description, no body) is replaced by ours, block5.comms_tool(writer=writer), with the reason; a
+    finished one is used, with a note where it differs from ours."""
     if _is_ours(candidate):                        # the cell was run again after it switched to ours
         print("This is our ask_customer_comms, block5.comms_tool().")
         return candidate
-    problem = None
+    problem, notes = None, []
     if not isinstance(candidate, BaseTool):
         problem = "it is not a tool (is @tool missing?)"
     else:
         text = (candidate.description or "").lower()
-        if "todo" in text or len(text) < 60:
-            problem = "its description is still empty or very short; the supervisor decides from it when to ask"
-        elif sorted(candidate.args) != ["missing_items", "package_id", "reason"]:
-            problem = f"it takes {sorted(candidate.args)}; it should take package_id, missing_items and reason"
+        if "todo" in text or not text.strip():
+            problem = "its description is still the TODO; the supervisor decides from it when to ask"
         elif _body_missing(candidate):
-            problem = "its body is not written yet; it should run the letter loop and return the letter"
+            problem = "its body is not written yet; it should draft the letter with write_customer_letter and return it"
+        else:
+            if len(text) < 60:
+                notes.append("its description is short; the supervisor decides from it when to ask")
+            if sorted(candidate.args) != ["missing_items", "package_id", "reason"]:
+                notes.append(f"it takes {sorted(candidate.args)}, ours takes package_id, missing_items and reason; "
+                             f"COMMS_PROMPT_LINE names those three")
     if problem:
         print(f"Your ask_customer_comms is not finished yet ({problem}).\nThe cells below use ours, block5.comms_tool().")
         ours = comms_tool(writer=writer)
         ours.metadata = {**(ours.metadata or {}), "course_reference": True}
         return ours
-    print(f"Yes: {candidate.name} is a tool with a description and the three arguments.")
+    if notes:
+        print(f"Your {candidate.name} differs from ours. The cells below use yours:", *[f"  - {n}." for n in notes], sep="\n")
+    else:
+        print(f"Yes: {candidate.name} is a tool with a description and the three arguments.")
     return candidate
 
 # ------------------------------------------------------------------ Debrief demo: separating permissions

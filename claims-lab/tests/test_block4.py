@@ -226,3 +226,17 @@ def test_an_unfinished_limit_check_falls_back_to_ours(capsys):
     assert B.test_limit_check(B.check_fast_track_limit) is B.check_fast_track_limit
     out = capsys.readouterr().out
     assert "not finished" not in out and "CHF   8,600: refer_adjuster  yes" in out and "CHF   1,150: passes          yes" in out
+
+
+def test_a_finished_limit_check_with_another_limit_is_used_and_marked_no(capsys):
+    def low_limit(f, policy):
+        if f.amount_chf > 1000:
+            return {"decision": "refer_adjuster", "issue": "above_fast_track_limit", "reason": "above CHF 1,000"}
+    assert B.test_limit_check(low_limit) is low_limit
+    out = capsys.readouterr().out
+    assert "not finished" not in out and "CHF   1,150: refer_adjuster  no" in out and "differs from the cheat sheet" in out
+
+    def text_finding(f, policy):
+        return "refer" if f.amount_chf > 5000 else None
+    assert B.test_limit_check(text_finding) is B.check_fast_track_limit
+    assert "a finding is a dict with a decision and a reason" in capsys.readouterr().out

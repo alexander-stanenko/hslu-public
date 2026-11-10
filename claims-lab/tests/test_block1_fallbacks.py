@@ -117,10 +117,12 @@ def test_invoice_check_finished_empty_and_wrong():
     assert block1.check_my_invoice_check(block1.check_duplicate_invoice) is block1.check_duplicate_invoice
     assert block1.check_my_invoice_check(lambda facts, policy: None) is block1.check_duplicate_invoice
     declines = lambda facts, policy: cl.ClaimDecision(decision="decline", reasoning="x")  # noqa: E731
-    problems = block1._invoice_check_problems(declines)
-    assert any("refer_adjuster" in p for p in problems) and any("PKG-001" in p for p in problems)
-    assert block1._invoice_check_problems(lambda facts, policy: None) == ["it lets the reused invoice GH-3318 of PKG-002 pass"]
+    problem, notes = block1._invoice_check_problems(declines)
+    assert problem is None and any("refer_adjuster" in n for n in notes) and any("PKG-001" in n for n in notes)
+    assert block1.check_my_invoice_check(declines) is declines          # finished, though not as the cheat sheet says
+    assert block1._invoice_check_problems(lambda facts, policy: None) == ("it lets the reused invoice GH-3318 of PKG-002 pass", [])
     assert block1._invoice_check_problems(lambda facts, policy: 1 / 0)[0].startswith("it raised ZeroDivisionError")
+    assert block1._invoice_check_problems(lambda facts, policy: "refer")[0].startswith("it returns a str")
 
 
 @pytest.mark.parametrize("text,expected", [
