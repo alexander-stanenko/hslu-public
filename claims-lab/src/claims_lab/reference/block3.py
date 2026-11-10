@@ -212,6 +212,8 @@ async def show_wire(server, tool: str = "lookup_policy", arguments: dict | None 
     tools/list and tools/call exchanges. To keep it short, long texts are cut, only the first tool of the list is
     shown, and two repeated or technical parts are replaced by a note (FastMCP's `_meta`, `outputSchema`, and
     `structuredContent`, which repeats the text result as JSON). Returns all messages, unshortened."""
+    if isinstance(server, (str, Path)):   # a server file, e.g. "lakeside_server.py": import it, do not start it
+        server = _import_server(Path(server))
     tap = WireTap(server)
     async with Client(tap) as c:
         await c.list_tools()
@@ -403,6 +405,71 @@ def _add_approve_payout(server) -> None:
         if answer.action == "accept":
             return f"approved by a person: the invoice of CHF {invoice_chf:,.0f} on {package_id}"
         return f"NOT approved: the invoice of CHF {invoice_chf:,.0f} on {package_id} goes to an adjuster"
+
+
+APPROVAL_SOURCE = '''"""Approval before a payment (notebook 03, Extra 1): above CHF 5,000 the server asks a person."""
+from fastmcp import Context, FastMCP
+
+mcp = FastMCP("lakeside-approvals", instructions="Approval of payments.")
+
+
+@mcp.tool(annotations={"readOnlyHint": False, "destructiveHint": False})
+async def approve_payout(package_id: str, invoice_chf: float, ctx: Context) -> str:
+    """Get the approval for paying a claim. Up to CHF 5,000 the claim is approved at once; above, a person decides."""
+    if invoice_chf <= 5000:
+        return f"approved: the invoice of CHF {invoice_chf:,.0f} on {package_id} is within the fast-track limit"
+    answer = await ctx.elicit(f"{package_id}: the invoice of CHF {invoice_chf:,.0f} is above the CHF 5,000 limit. "
+                              "Approve the payment?", response_type=None)
+    if answer.action == "accept":
+        return f"approved by a person: the invoice of CHF {invoice_chf:,.0f} on {package_id}"
+    return f"NOT approved: the invoice of CHF {invoice_chf:,.0f} on {package_id} goes to an adjuster"
+
+
+if __name__ == "__main__":
+    mcp.run(show_banner=False)
+'''
+
+
+async def check_approval_server(path: str | Path = "approval_server.py") -> str:
+    """Notebook 03, Extra 1: the participant's server file if its approve_payout asks above CHF 5,000 and only
+    there; otherwise our version, written next to it as approval_server_ours.py. Returns the file to start."""
+    path = Path(path)
+    try:
+        server = _import_server(path)
+    except Exception as e:  # noqa: BLE001
+        problem = f"{type(e).__name__}: {str(e).splitlines()[0][:120]}"
+    else:
+        problem = await _approval_problem(server)
+    if not problem:
+        return str(path)
+    ours = path.with_name("approval_server_ours.py")
+    ours.write_text(APPROVAL_SOURCE, encoding="utf-8")
+    print(f"{path.name} is not finished yet ({problem}), so this cell uses ours, {ours.name}.\n")
+    return str(ours)
+
+
+async def _approval_problem(server) -> str | None:
+    """Why the server's approve_payout is not finished, or None if it asks above the limit and only there."""
+    from fastmcp.client.elicitation import ElicitResult
+    asked = []
+
+    async def decline(message, response_type, params, context):
+        asked.append(message)
+        return ElicitResult(action="decline")
+    try:
+        async with Client(server, elicitation_handler=decline) as c:
+            if "approve_payout" not in [t.name for t in await c.list_tools()]:
+                return "the server has no tool approve_payout"
+            low = await c.call_tool("approve_payout", {"package_id": "PKG-001", "invoice_chf": 1150})
+            await c.call_tool("approve_payout", {"package_id": "PKG-006", "invoice_chf": 8600})
+    except Exception as e:  # noqa: BLE001
+        return ("it returns nothing above CHF 5,000" if "None is not of type" in str(e)
+                else f"{type(e).__name__}: {str(e).splitlines()[0][:120]}")
+    if len(asked) != 1:
+        return "it should ask above CHF 5,000 and only there"
+    if not low.data:
+        return "it returns nothing up to CHF 5,000"
+    return None
 
 
 async def ensure_approve_payout(server) -> None:

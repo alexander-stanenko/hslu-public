@@ -18,6 +18,11 @@ from .schemas import ClaimDecision, ClaimFacts, DocInfo
 from .scoreboard import ascoreboard, aspot_check, compare, scoreboard, scoreboard_history, spot_check
 from .trace import context_breakdown, show_graph, show_trace
 
+try:  # MCP servers over stdio from a notebook: the package fixes a known problem of notebook kernels (see mcp_servers)
+    from . import mcp_servers as _mcp_servers  # noqa: F401
+except ImportError:  # the MCP libraries are not installed
+    pass
+
 __version__ = "0.1.0"
 __all__ = ["setup", "get_model", "get_client", "run_config", "BudgetExceeded", "get_embeddings", "provider", "load_package", "list_packages", "cheat_sheet", "labels", "label", "show_claims",
            "terms", "query", "reset_workdir", "Package", "ClaimDecision", "ClaimFacts", "DocInfo", "scoreboard",
