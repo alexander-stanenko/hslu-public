@@ -238,16 +238,17 @@ def score(report: Report) -> dict:
 DESIGNS = ("one agent", "team", "workflow")
 
 
-def review(design: str = "team") -> dict:
-    """One run of a design: its report, the score against TRUTH, model calls, cost and time."""
+def review(design: str = "team", agent=None, collected: list | None = None) -> dict:
+    """One run of a design: its report, the score against TRUTH, model calls, cost and time. agent replaces our agent for
+    the design (notebook 05 builds the team in its own cells); collected is the list its reviewers add their messages to."""
     from ..costs import CostMeter
     if design not in DESIGNS:
         raise ValueError(f"design must be one of {DESIGNS}")
-    meter, t0, msgs = CostMeter(max_calls=80, max_input_tokens=60_000), time.time(), []
+    meter, t0, msgs = CostMeter(max_calls=80, max_input_tokens=60_000), time.time(), (collected if collected is not None else [])
     if design == "workflow":
         report = workflow({"callbacks": [meter]})
     else:
-        agent = one_agent() if design == "one agent" else team(msgs)
+        agent = agent or (one_agent() if design == "one agent" else team(msgs))
         r = agent.invoke({"messages": [("user", TASK)]}, config=run_config(30, callbacks=[meter]))
         report, msgs = r["structured_response"], r["messages"] + msgs
     calls = [c for m in msgs if getattr(m, "type", "") == "ai" for c in (m.tool_calls or [])]

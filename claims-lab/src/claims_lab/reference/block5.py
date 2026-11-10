@@ -110,9 +110,10 @@ def _split_problem(split) -> str | None:
 
 
 @blank_line_after
-def check_split(split) -> dict[str, list[BaseTool]]:
+def check_split(split, tools: dict | None = None) -> dict[str, list[BaseTool]]:
     """Exercise A1: check a split of the six tools from notebook 02 between the two specialists, print it as a table and
-    return {specialist: [tools]}. An unfinished or wrong split is replaced by ours, with the reason."""
+    return {specialist: [tools]}. An unfinished or wrong split is replaced by ours, with the reason. tools maps each name
+    to the tool to hand out (the notebook's own copies); by default the reference tools."""
     if split is TOOL_SPLIT:
         print("This is our split, block5.TOOL_SPLIT.")
     problem = _split_problem(split)
@@ -124,7 +125,8 @@ def check_split(split) -> dict[str, list[BaseTool]]:
     for s in SPECIALISTS:
         for n in split[s]:
             print(f"  {s.replace('_', ' '):<18} {n:<26} checklist step {STEP[n]}")
-    return {s: [TOOLS[n] for n in split[s]] for s in SPECIALISTS}
+    tools = tools or TOOLS
+    return {s: [tools[n] for n in split[s]] for s in SPECIALISTS}
 
 
 def specialist(name: str, tools: list | None = None, llm=None):
@@ -416,27 +418,29 @@ COMMS_PROMPT_LINE = ("\nWhen your decision is request_info, call ask_customer_co
                      "You send nothing yourself.")
 
 
-def comms_tool(letters=None) -> BaseTool:
-    """Stretch (b): customer comms as a third specialist, the letter loop from notebook 04 (write, check, revise). It drafts;
-    sending stays with code and a person."""
+def comms_tool(letters=None, writer=None) -> BaseTool:
+    """Notebook 05, Extra 1: customer comms as a third specialist. writer(package, decision) drafts the letter (the
+    notebook's one-call writer); without it, the letter loop from notebook 04 (write, check, revise). It drafts; sending
+    stays with code and a person."""
     from ..data import load_package
-    loop = letters or block4.build_letter_loop()
+    loop = None if writer else (letters or block4.build_letter_loop())
 
     @tool
     def ask_customer_comms(package_id: str, missing_items: list[str], reason: str) -> str:
         """Ask customer comms for a draft letter to the customer about missing documents or information. Give the claim
         package id, the missing items and the reason. Returns the draft; nothing is sent."""
         d = ClaimDecision(decision="request_info", missing_items=missing_items, reasoning=reason)
-        out = loop.invoke({"package": load_package(package_id), "decision": d})
-        return out["letter"]
+        if writer:
+            return writer(load_package(package_id), d)
+        return loop.invoke({"package": load_package(package_id), "decision": d})["letter"]
     return ask_customer_comms
 
 
 
 @blank_line_after
-def check_comms_tool(candidate) -> BaseTool:
+def check_comms_tool(candidate, writer=None) -> BaseTool:
     """Notebook 05, extra task: check your ask_customer_comms without running it (no model call). An unfinished tool is
-    replaced by ours, block5.comms_tool(), with the reason."""
+    replaced by ours, block5.comms_tool(writer=writer), with the reason."""
     if _is_ours(candidate):                        # the cell was run again after it switched to ours
         print("This is our ask_customer_comms, block5.comms_tool().")
         return candidate
@@ -453,7 +457,7 @@ def check_comms_tool(candidate) -> BaseTool:
             problem = "its body is not written yet; it should run the letter loop and return the letter"
     if problem:
         print(f"Your ask_customer_comms is not finished yet ({problem}).\nThe cells below use ours, block5.comms_tool().")
-        ours = comms_tool()
+        ours = comms_tool(writer=writer)
         ours.metadata = {**(ours.metadata or {}), "course_reference": True}
         return ours
     print(f"Yes: {candidate.name} is a tool with a description and the three arguments.")

@@ -56,6 +56,7 @@ _ENDPOINT = re.compile(r'"(azure_endpoint|base_url|openai_api_base)": "[^"]*"(, 
 
 
 _INDENT = re.compile(r"\\n +")
+_CLASS = re.compile(r"<class '(?:[\w]+\.)+(\w+)'>")
 
 
 def _llm_key(llm_string: str) -> str:
@@ -64,8 +65,11 @@ def _llm_key(llm_string: str) -> str:
 
     Indentation after a line break is dropped too. The tool descriptions in these settings come from docstrings, and
     Python 3.13 and later strip a docstring's indentation while 3.12 keeps it, so without this a recording made on one
-    Python version would never replay on the other."""
-    return _INDENT.sub(r"\\n", _ENDPOINT.sub("", llm_string))
+    Python version would never replay on the other.
+
+    A structured-output class is written as <class 'module.Name'>; only its name is kept. The model receives the class's
+    schema, never its module, so the same class defined in a notebook (__main__) replays the package's recording."""
+    return _CLASS.sub(r"<class '\1'>", _INDENT.sub(r"\\n", _ENDPOINT.sub("", llm_string)))
 
 
 class SQLiteReplayCache(BaseCache):

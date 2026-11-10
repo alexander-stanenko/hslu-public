@@ -358,7 +358,7 @@ FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "three_systems": "A spectrum of autonomy (slide 15)",
            "agent_loop": "The agent loop (slide 21)",
            "mcp_architecture": "MCP: host, client and server (slide 51)",
-           "hybrid_pipeline": "The hybrid pipeline: rules in code, a model for judgement (notebook 04)",
+           "hybrid_pipeline": "The pipeline as a graph (slide 72)",
            "claims_team": "Lakeside's claims team (slide 86)"}
 
 
