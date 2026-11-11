@@ -44,13 +44,13 @@ BLOCKS = {
                 "and other teams' agents need the same look-ups.",
         "tell": ["MCP lets one server offer Lakeside's look-ups to any application: our notebook, Claude Desktop, "
                  "another team's agent.",
-                 "It changes where the tools live, not how well the agent decides.",
+                 "Over MCP the agent decided as well as with local tools.",
                  "A server's descriptions reach the model, so a server is trusted code: one partner server's description "
                  "made the agent skip the invoice check and pay PKG-002 in 7 of our 9 runs."]},
-    4: {"question": "Where do rules belong in code, and where does a model judge?",
+    4: {"question": "Which steps go into code, and where does a model judge?",
         "open": "From notebook 03: the agent reaches its tools from anywhere, but it still pays some claims it should not "
                 "(PKG-006: CHF 8,600, above the limit).",
-        "tell": ["Put every rule that can be written down in code; no claim with a rule-detectable problem was paid.",
+        "tell": ["The pipeline checks every written rule in code, and it paid no claim that a rule should have stopped.",
                  "Use the model where reading and judgement are needed: extracting facts, spotting signs of an "
                  "exclusion, deciding the hard cases.",
                  "The pipeline made fewer model calls and cost less than the agent, and decided more claims right."]},
@@ -59,14 +59,14 @@ BLOCKS = {
                 "to one agent, which holds all the tools and the whole checklist.",
         "tell": ["A team splits one agent's work: only the supervisor reads the claim, and each specialist sees its "
                  "question and its own tools.",
-                 "Every hand-over can lose information, and a hand-over made of fields also keeps out what must not pass: "
-                 "one agent sent a customer's policy record to an address written in a tyre shop's invoice, the team's "
-                 "writer never saw it.",
+                 "Every hand-over can lose information. A hand-over made of checked fields also keeps text out: one agent "
+                 "sent a customer's policy record to an address written in a tyre shop's invoice, while the team's "
+                 "writer never saw that address.",
                  "On all 16 claims, test and held-out, the team was about as accurate as the pipeline, with twice its "
                  "unsafe approvals at four times its cost; the checklist agent fell behind on the held-out claims."]},
     6: {"question": "Which system for which kind of claim, and how sure are we?",
         "open": "From notebook 05: every design of the day is measured on the same claims. Which system for which kind of "
-                "claim, and does the answer hold on claims nobody has seen?",
+                "claim, and does the answer hold on the held-out claims?",
         "tell": ["Put every rule that can be written down in code. Our labels follow the same cheat sheet as its rules, "
                  "so this shows good reading, not that the rules are right.",
                  "Use a model where reading and judgement are needed, an agent only for the claims that need judgement, "
