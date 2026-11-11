@@ -38,10 +38,35 @@ def _secret(name: str) -> str | None:
     return None
 
 
+def _course_pool() -> str | None:
+    """Local development: the instructor's git-ignored course_access.keys.json, the endpoint pool the Drive copies carry.
+
+    Picks one endpoint at random, like the install cell. Not used in Colab, where the install cell does this."""
+    if _in_colab():
+        return None
+    import json
+    import random
+    for d in [Path.cwd(), *Path.cwd().parents]:
+        for f in (d / "course_access.keys.json", d / "notebooks" / "course_access.keys.json"):
+            if not f.exists():
+                continue
+            pool = [e for e in json.loads(f.read_text()).get("pool", []) if not any(v.startswith("<") for v in e.values())]
+            if not pool:
+                continue
+            i = random.randrange(len(pool))
+            os.environ.update({k: v.strip() for k, v in pool[i].items()})
+            return f"{f.name} (course endpoint {i + 1} of {len(pool)})"
+    return None
+
+
 def _load_key(name: str) -> str | None:
     src = _secret(name)
     if src:
         return src
+    if name == "AZURE_OPENAI_API_KEY":
+        src = _course_pool()
+        if src:
+            return src
     for d in [Path.cwd(), *Path.cwd().parents]:  # local development: a .key file next to the notebooks
         if (d / ".key").exists() and name == "ANTHROPIC_API_KEY":
             os.environ[name] = (d / ".key").read_text().strip()
@@ -163,7 +188,8 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
     """Prepare the notebook: API key, provider, versions, data, a test call to the model.
 
     Args:
-        provider: 'anthropic', 'azure_openai' or 'offline' (default: from CLAIMS_LAB_PROVIDER or available keys).
+        provider: 'azure_openai' (the course provider, the default), 'offline' or 'anthropic' (default: from
+            CLAIMS_LAB_PROVIDER, else 'azure_openai'; an Anthropic key in the environment does not change it).
             'offline' uses a scripted stand-in model: no key, no network, no cost (for testing the notebooks).
         ping: send one tiny request to check that the model answers.
         **azure: optional Azure settings, e.g. endpoint=..., chat_deployment=..., embedding_deployment=..., api_version=...
@@ -179,11 +205,6 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
                     "embedding_deployment": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "api_version": "OPENAI_API_VERSION"}[k]] = v
     if provider:
         os.environ["CLAIMS_LAB_PROVIDER"] = provider
-    elif not os.environ.get("CLAIMS_LAB_PROVIDER"):
-        # Colab keeps the keys in Colab Secrets, not in the environment: look there before the provider is chosen.
-        # In Colab without any key, choose the class provider, so that the check below names the missing secret.
-        if not _secret("AZURE_OPENAI_API_KEY") and _in_colab() and not _secret("ANTHROPIC_API_KEY"):
-            os.environ["CLAIMS_LAB_PROVIDER"] = "azure_openai"
     from . import models
     from .data import labels, list_packages
 

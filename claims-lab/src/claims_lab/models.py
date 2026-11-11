@@ -1,7 +1,7 @@
 """One place that decides which LLM provider and model the notebooks use.
 
-Notebooks only call `get_model()` and `get_embeddings()`. Switching the whole course
-from Anthropic to Azure OpenAI is a matter of environment variables (see `claims_lab.setup`).
+Notebooks only call `get_model()` and `get_embeddings()`. The course runs on Azure OpenAI (gpt-5.4-mini);
+'offline' is a scripted stand-in for tests. Anthropic is used only when CLAIMS_LAB_PROVIDER=anthropic is set.
 """
 from __future__ import annotations
 
@@ -22,13 +22,10 @@ COURSE_AZURE = {"AZURE_OPENAI_CHAT_DEPLOYMENT": "gpt-5.4-mini",
 
 
 def provider() -> str:
-    """'anthropic', 'azure_openai' or 'offline' (from CLAIMS_LAB_PROVIDER, else inferred from available keys)."""
-    p = os.environ.get("CLAIMS_LAB_PROVIDER")
-    if p:
-        return p
-    if os.environ.get("AZURE_OPENAI_API_KEY"):
-        return "azure_openai"
-    return "anthropic"
+    """'azure_openai' (the course provider and the default), 'offline' or 'anthropic', from CLAIMS_LAB_PROVIDER.
+
+    No key is used to guess the provider: an Anthropic key in the environment never switches the course to Anthropic."""
+    return os.environ.get("CLAIMS_LAB_PROVIDER") or "azure_openai"
 
 
 def get_model(model: str | None = None, effort: str | None = None, **kwargs) -> BaseChatModel:

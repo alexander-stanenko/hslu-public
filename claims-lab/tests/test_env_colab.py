@@ -74,11 +74,27 @@ def test_colab_with_key_but_no_endpoint_is_not_ready(clean_env, monkeypatch, cap
     assert "API key from Colab Secrets" in out and "Azure endpoint from NOWHERE" in out and "NOT ready" in out
 
 
-def test_outside_colab_without_keys_keeps_the_development_default(clean_env, monkeypatch, capsys):
+def test_an_anthropic_key_never_switches_the_course_to_anthropic(clean_env, monkeypatch, capsys):
     monkeypatch.setitem(sys.modules, "google.colab", None)  # import fails: not in Colab
+    os.environ["ANTHROPIC_API_KEY"] = "test-anthropic-key"
     setup(ping=False)
-    assert models.provider() == "anthropic"
-    assert "Azure endpoint" not in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert models.provider() == "azure_openai"
+    assert "provider azure_openai, API key from NOWHERE" in out and "NOT ready" in out
+
+
+def test_outside_colab_the_local_key_pool_gives_one_course_endpoint(clean_env, monkeypatch, tmp_path, capsys):
+    import json
+    monkeypatch.setitem(sys.modules, "google.colab", None)
+    pool = [{"AZURE_OPENAI_API_KEY": "<placeholder>", "AZURE_OPENAI_ENDPOINT": "<placeholder>"},
+            {"AZURE_OPENAI_API_KEY": "key-b", "AZURE_OPENAI_ENDPOINT": "https://b.example.com/"}]
+    (tmp_path / "notebooks").mkdir()
+    (tmp_path / "notebooks" / "course_access.keys.json").write_text(json.dumps({"_note": "test", "pool": pool}))
+    setup(ping=False)
+    out = capsys.readouterr().out
+    assert models.provider() == "azure_openai"
+    assert os.environ["AZURE_OPENAI_API_KEY"] == "key-b" and os.environ["AZURE_OPENAI_ENDPOINT"] == "https://b.example.com/"
+    assert "course_access.keys.json (course endpoint 1 of 1)" in out and "ready: yes" in out
 
 
 def test_azure_model_uses_the_course_deployment_by_default(clean_env):
