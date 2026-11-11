@@ -425,9 +425,10 @@ def system(team):
     return block2.run(team)
 
 
-def versus_recorded(label: str = "claims team"):
-    """Your latest scoreboard run with this label next to our runs of the checklist agent and the hybrid
-    pipeline on the same 8 claims: one table and the chart of accuracy against cost."""
+def versus_recorded(label: str = "claims team", split: str = "test"):
+    """Your latest scoreboard run with this label next to our runs of the checklist agent, the hybrid pipeline and the
+    team on the same 8 claims: one table and the chart of accuracy against cost. split="heldout": our runs on the 8
+    held-out claims (PKG-101 to PKG-108) instead of the 8 test claims."""
     import pandas as pd
 
     from ..course import RUN_COLUMNS, _interactive, as_runs, reference_runs
@@ -435,6 +436,9 @@ def versus_recorded(label: str = "claims team"):
     from ..style import plot_history
     mine = pd.DataFrame([h for h in HISTORY if h.get("design", h["label"]) == label][-1:])
     ref = reference_runs(block=5)
+    if split == "heldout":
+        ref = reference_runs(block=6)
+        ref = ref[ref["label"].str.contains("held-out")].reset_index(drop=True)
     parts = ([as_runs(mine).assign(source="you, today")] if len(mine) else []) + [ref[RUN_COLUMNS].assign(source="our runs")]
     table = pd.concat(parts, ignore_index=True)
     if _interactive():

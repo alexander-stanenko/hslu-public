@@ -142,6 +142,8 @@ def test_team_decides_offline_and_the_scoreboard_counts_every_agent(capsys):
     assert list(table["label"]) == ["claims team", "checklist agent", "hybrid pipeline", "claims team"]
     assert list(table["source"]) == ["you, today"] + ["our runs"] * 3
     assert table.iloc[0]["runs"] == 1 and table.iloc[3]["correct"] == "7 to 8"
+    held = B.versus_recorded("claims team", split="heldout")
+    assert list(held["label"])[1:] == ["checklist agent, 8 held-out", "hybrid pipeline, 8 held-out", "claims team, 8 held-out"]
 
 
 def test_specialists_see_only_the_question():

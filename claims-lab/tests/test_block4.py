@@ -136,8 +136,16 @@ def test_unfinished_route_and_graph_fall_back_to_the_reference(offline, capsys):
         ...
     assert B.test_route(unfinished) is B.route
     out = capsys.readouterr().out
-    assert "not finished" in out and "a clean claim        goes to fast_track      yes" in out
+    assert "not finished" in out and "block4.route" in out
     assert B.test_route(B.route) is B.route and "not finished" not in capsys.readouterr().out
+
+    def to_the_agent(state):  # runs, but sends a clean claim to the agent: used, with a note
+        return "decide_by_rule" if state["finding"] else "claims_agent"
+    assert B.test_route(to_the_agent) is to_the_agent
+    out = capsys.readouterr().out
+    assert "the cells below use it" in out and "a clean claim goes to claims_agent (ours: fast_track)" in out
+    mine = lambda state: B.route(state)  # noqa: E731  (a route like ours)
+    assert B.test_route(mine) is mine and "where ours does" in capsys.readouterr().out
 
     def fresh():  # the six steps but no edges, as the exercise cell is before the TODO is done
         g = StateGraph(B.ClaimState)
@@ -152,7 +160,8 @@ def test_unfinished_route_and_graph_fall_back_to_the_reference(offline, capsys):
     g.add_edge("__start__", "extract_facts")
     B.check_graph(g)
     out = capsys.readouterr().out
-    assert "missing edge from START to screen" in out and "missing edge from rule_checks to fast_track" in out
+    assert "the cells below use it" in out
+    assert "no edge from START to screen" in out and "no edge from rule_checks to fast_track" in out
 
 
 def test_empty_instructions_fall_back_to_lakesides(capsys):

@@ -75,7 +75,7 @@ def test_exercise_notebook_continues_with_the_reference_when_an_exercise_cell_fa
     import build
     nb = build.build(ROOT / "notebooks" / "src" / "02_tools_and_context.py", solution=False)
     nb.cells = [c for c in nb.cells if "install" not in c.metadata.get("tags", [])]
-    b2 = next(i for i, c in enumerate(nb.cells) if c.cell_type == "code" and "my_tools = [lookup_policy, history" in c.source)
+    b2 = next(i for i, c in enumerate(nb.cells) if c.cell_type == "code" and "my_tools = [lookup_policy, get_claim_history, search_claims_by_invoice, search," in c.source)
     c1 = next(i for i, c in enumerate(nb.cells) if c.cell_type == "code" and c.source.startswith("MY_PROMPT ="))
     nb.cells[b2].source = "raise RuntimeError('a broken exercise cell')"
     nb.cells[c1].source = "raise RuntimeError('a broken exercise cell')"

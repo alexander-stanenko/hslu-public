@@ -107,3 +107,13 @@ def test_a_pick_can_be_one_word_without_a_reason(capsys):
     assert "Saved your picks for 1 kind of claim." in capsys.readouterr().out
     df = course.picks_table(1).set_index("kind of claim")
     assert df.loc["Routine and complete", "your pick"] == "workflow" and df.loc["Incomplete", "your pick"] == ""
+
+
+def test_notebook_05_result_card_shows_every_design_and_the_held_out_runs(capsys, monkeypatch):
+    import sys
+    monkeypatch.setattr(sys.modules["claims_lab.scoreboard"], "HISTORY", [])
+    shown = []
+    monkeypatch.setattr("IPython.display.display", lambda obj: shown.append(obj))
+    cl.result_card(5)
+    table = shown[-1]
+    assert "vague tools" in set(table["label"]) and "claims team, 8 held-out" in set(table["label"])

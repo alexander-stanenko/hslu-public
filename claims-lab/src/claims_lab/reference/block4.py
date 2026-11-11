@@ -226,27 +226,32 @@ def _why(e: Exception) -> str:
 
 
 def test_route(route_fn):
-    """Exercise C1: try a routing function on three hand-made states and print where each goes. An unfinished function
-    (an error, or no step name) is replaced by the reference route, with a message. Returns the function to use."""
+    """Exercise C1: try a routing function on three hand-made states. A route that runs is used, with one line on whether
+    it sends the states where ours does. Only a route that raises an error or returns no step name is replaced by the
+    reference route, with a message. Returns the function to use."""
     failed = {"decision": "decline", "issue": "not_covered", "reason": "glass is not covered"}
     if route_fn is route:                          # the cell was run again after it switched to ours
-        print("This is our route, block4.route.\n")
+        print("Route: ours, block4.route.")
+        return route_fn
     cases = [("a failed rule", failed, False, "decide_by_rule"), ("signs of judgement", None, True, "claims_agent"),
              ("a clean claim", None, False, "fast_track")]
-    for name, finding, needs, _ in cases:
+    differs = []
+    for name, finding, needs, expected in cases:
         try:
             way = route_fn({"finding": finding, "judgement": Judgement(needs_judgement=needs)})
             problem = None if way in WAYS else f"for {name} it returned {way!r}, not one of {', '.join(WAYS)}"
         except Exception as e:  # noqa: BLE001  (any error in the participant's code)
             problem = f"for {name}: {_why(e)}"
         if problem:
-            print(f"Explore path, or route not finished: the cells below use our route, block4.route, as expected. "
-                  f"(Details for Build: {problem}.)\n")
-            route_fn = route
-            break
-    for name, finding, needs, expected in cases:
-        way = route_fn({"finding": finding, "judgement": Judgement(needs_judgement=needs)})
-        print(f"{name:<20} goes to {way:<15} {'yes' if way == expected else 'no, expected ' + expected}")
+            print(f"Route: Explore path, or route not finished: the cells below use our route, block4.route, as expected. "
+                  f"(Details for Build: {problem}.)")
+            return route
+        if way != expected:
+            differs.append(f"{name} goes to {way} (ours: {expected})")
+    if differs:
+        print(f"Route: yours runs, and the cells below use it. It differs from ours: {'; '.join(differs)}.")
+    else:
+        print("Route: yours sends each test state where ours does.")
     return route_fn
 
 
@@ -261,12 +266,13 @@ REFERENCE_EDGES = [(START, "extract_facts"), (START, "screen"), (["extract_facts
 
 @blank_line_after
 def check_graph(g: StateGraph, route_fn=route):
-    """Exercise C1: compile your graph with g.compile() and compare its edges with the reference pipeline. If it does not
-    compile yet (for example, no edges), your nodes get the reference edges instead, with a message."""
+    """Exercise C1: compile your graph with g.compile() and compare its edges with the reference pipeline. A graph that
+    compiles is used, with a note where its edges differ from ours. If it does not compile yet (for example, no edges),
+    your nodes get the reference edges instead, with a message."""
     try:
         app = g.compile()
     except Exception as e:  # noqa: BLE001
-        print(f"Explore path, or C1 not finished: the cells below use your steps with our route and edges, as expected. "
+        print(f"Graph: Explore path, or C1 not finished: the cells below use your steps with our edges, as expected. "
               f"(Details for Build: {_why(e)}.)")
         ref = StateGraph(g.state_schema)
         for name, spec in g.nodes.items():
@@ -275,13 +281,14 @@ def check_graph(g: StateGraph, route_fn=route):
             ref.add_edge(a, b)
         ref.add_conditional_edges("rule_checks", route_fn, WAYS)
         return ref.compile()
-    missing, extra = _edges(build_pipeline(route_fn)) - _edges(app), _edges(app) - _edges(build_pipeline(route_fn))
+    ours = _edges(build_pipeline(route_fn))
+    missing, extra = ours - _edges(app), _edges(app) - ours
     if not missing and not extra:
-        print("Yes: your graph has the same edges as the reference pipeline.")
-    for a, b in sorted(missing):
-        print(f"No: missing edge from {a} to {b}")
-    for a, b in sorted(extra):
-        print(f"No: edge not in the reference, from {a} to {b}")
+        print("Graph: yours has the same edges as ours.")
+    else:
+        notes = [f"no edge from {a} to {b}" for a, b in sorted(missing)] + [f"an edge from {a} to {b}, which ours has not"
+                                                                          for a, b in sorted(extra)]
+        print(f"Graph: yours compiles, and the cells below use it. It differs from ours: {'; '.join(notes)}.")
     return app
 
 

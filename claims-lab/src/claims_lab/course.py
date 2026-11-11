@@ -97,7 +97,7 @@ REFERENCE_RUNS = [
     {"block": 5, **_CHECKLIST}, {"block": 5, **_PIPELINE}, {"block": 5, **_TEAM},
     {"block": 6, **_BAD}, {"block": 6, **_FIXED}, {"block": 6, **_CHECKLIST}, {"block": 6, **_MCP},
     {"block": 6, **_PIPELINE}, {"block": 6, **_TEAM},
-    # Notebook 06: the three final designs on the 8 held-out claims, three runs each.
+    # The three final designs on the 8 held-out claims, three runs each (notebook 05, Part E and its result card).
     {"block": 6, **_design("checklist agent, 8 held-out", 8, 3, "5 to 7", "0 to 2", 0.71, 1.3, 3.3, 0.0042)},
     {"block": 6, **_design("hybrid pipeline, 8 held-out", 8, 3, "8 in every run", "0", 1.00, 0.0, 2.4, 0.0016)},
     {"block": 6, **_design("claims team, 8 held-out", 8, 3, "7 to 8", "0 to 1", 0.96, 0.3, 6.8, 0.0076)},
@@ -182,7 +182,7 @@ EVIDENCE = {
         "Suspicious": "The red-flag checker found the reused invoice on PKG-002 in every run.",
         "Incomplete": "On PKG-211 one agent with a mail tool also e-mailed the address in the tyre shop's invoice in "
                       "11 of our 20 runs; the team's writer, which reads no document, never did."},
-    # Notebook 06: which system for which kind of claim, one line per kind.
+    # The answer: which system for which kind of claim, one line per kind (the closing slides; cl.show_picks(6)).
     6: {"Routine and complete": "Answer: the pipeline. Code checks the rules and computes the payout; no agent needed.",
         "Incomplete": "Answer: a rule asks the customer (request_info), and the letter loop writes to them; with a person "
                       "on the line, the server can ask (elicitation).",
@@ -263,6 +263,10 @@ def as_runs(df):
     return out[[c for c in RUN_COLUMNS if c in out]]
 
 
+# Notebook 05 closes the day: its result card shows every design, on the 8 test claims and the 8 held-out claims.
+CARD_ROWS = {5: 6}
+
+
 def result_card(block: int) -> None:
     """End of every notebook: your scoreboard runs of this session next to our recorded runs, and the notebook in three
     sentences."""
@@ -270,12 +274,12 @@ def result_card(block: int) -> None:
     from .style import plot_history
     import pandas as pd
     mine = pd.DataFrame(HISTORY)
-    ref = reference_runs(block=block)
+    ref = reference_runs(block=CARD_ROWS.get(block, block))
     if len(mine) or len(ref):
         if _interactive() and (len(mine) or len(ref) >= 3):   # two of our points alone make an empty-looking chart
             plot_history(mine if len(mine) else None, reference=ref if len(ref) else None)
         if not len(mine):
-            _markdown("No scoreboard run in this notebook, so the table shows only our runs on the eight test claims.")
+            _markdown("No scoreboard run in this notebook, so the table shows only our runs.")
         parts = []
         if len(mine):
             source = ["demo (replayed)" if r else "you, today"
