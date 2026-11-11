@@ -62,8 +62,8 @@ BLOCKS = {
                  "Every hand-over can lose information, and a hand-over made of fields also keeps out what must not pass: "
                  "one agent sent a customer's policy record to an address written in a tyre shop's invoice, the team's "
                  "writer never saw it.",
-                 "On our claims the team was about as accurate as the pipeline, at three and a half times its cost, and "
-                 "it still paid a claim above the limit once; the pipeline's limit, in code, never did."]},
+                 "On all 16 claims, test and held-out, the team was about as accurate as the pipeline, with twice its "
+                 "unsafe approvals at four times its cost; the checklist agent fell behind on the held-out claims."]},
     6: {"question": "Which system for which kind of claim, and how sure are we?",
         "open": "From notebook 05: every design of the day is measured on the same claims. Which system for which kind of "
                 "claim, and does the answer hold on claims nobody has seen?",
@@ -88,20 +88,23 @@ _FIXED = _design("described tools", 8, 8, "4 to 5", "1 to 3", 0.59, 1.4, 3.3, 0.
 _CHECKLIST = _design("checklist agent", 8, 24, "6 to 8", "0 to 2", 0.84, 1.3, 3.2, 0.0041)
 _MCP = _design("checklist agent over MCP", 8, 3, "7 in every run", "1 in every run", 0.88, 1.0, 3.1, 0.0039)
 _PIPELINE = _design("hybrid pipeline", 8, 4, "7 to 8", "0 to 1", 0.91, 0.3, 2.8, 0.0022)
-_VOTING = _design("pipeline with voting", 8, 3, "7 to 8", "0", 0.96, 0.0, 3.8, 0.0026)
 _TEAM = _design("claims team", 8, 4, "7 to 8", "0 to 1", 0.97, 0.3, 7.0, 0.0079)
 REFERENCE_RUNS = [
     {"block": 2, **_BAD}, {"block": 2, **_FIXED}, {"block": 2, **_CHECKLIST},
     {"block": 3, **_CHECKLIST}, {"block": 3, **_MCP},
-    {"block": 4, **_CHECKLIST}, {"block": 4, **_PIPELINE}, {"block": 4, **_VOTING},
+    {"block": 4, **_CHECKLIST}, {"block": 4, **_PIPELINE},
     {"block": 5, **_CHECKLIST}, {"block": 5, **_PIPELINE}, {"block": 5, **_TEAM},
-    {"block": 6, **_BAD}, {"block": 6, **_FIXED}, {"block": 6, **_CHECKLIST}, {"block": 6, **_MCP},
-    {"block": 6, **_PIPELINE}, {"block": 6, **_TEAM},
-    # The three final designs on the 8 held-out claims, three runs each (notebook 05, Part E and its result card).
-    {"block": 6, **_design("checklist agent, 8 held-out", 8, 3, "5 to 7", "0 to 2", 0.71, 1.3, 3.3, 0.0042)},
-    {"block": 6, **_design("hybrid pipeline, 8 held-out", 8, 3, "8 in every run", "0", 1.00, 0.0, 2.4, 0.0016)},
-    {"block": 6, **_design("claims team, 8 held-out", 8, 3, "7 to 8", "0 to 1", 0.96, 0.3, 6.8, 0.0076)},
 ]
+# The pipeline with voting (notebook 04, Stretch 1) got 7 to 8 of 8 in three runs, none unsafe, 3.8 calls and $0.0026
+# per claim. It is on no result card, since the card comes before the stretch.
+
+# The three final designs on the 8 held-out claims, three runs each (notebook 05, Part E and its result card).
+HELDOUT_RUNS = [
+    _design("checklist agent, 8 held-out", 8, 3, "5 to 7", "0 to 2", 0.71, 1.3, 3.3, 0.0042),
+    _design("hybrid pipeline, 8 held-out", 8, 3, "8 in every run", "0", 1.00, 0.0, 2.4, 0.0016),
+    _design("claims team, 8 held-out", 8, 3, "7 to 8", "0 to 1", 0.96, 0.3, 6.8, 0.0076),
+]
+HELDOUT = ", 8 held-out"   # the label suffix of a run on the held-out claims
 
 # Notebook 05, after class: the garage review (reference/garage.py), 25 invoices of six garages, 8 planted problems,
 # gpt-5.4-mini, our runs (planning/09 §9s for the last ones). Ranges are from the worst to the best run; cost and seconds are averages per run. The code
@@ -245,9 +248,12 @@ def where_we_are(block: int) -> None:
               f"**Where we start:** {b['open']}")
 
 
-def reference_runs(up_to_block: int | None = None, block: int | None = None):
-    """Our scoreboard runs (gpt-5.4-mini) as a table, one row per design: ranges over the runs and averages."""
+def reference_runs(up_to_block: int | None = None, block: int | None = None, split: str = "test"):
+    """Our scoreboard runs (gpt-5.4-mini) as a table, one row per design: ranges over the runs and averages.
+    split="heldout": the three final designs on the 8 held-out claims."""
     import pandas as pd
+    if split == "heldout":
+        return pd.DataFrame(HELDOUT_RUNS)
     rows = [r for r in REFERENCE_RUNS if (block is None or r["block"] == block)
             and (up_to_block is None or r["block"] <= up_to_block)]
     return pd.DataFrame(rows)
@@ -263,8 +269,90 @@ def as_runs(df):
     return out[[c for c in RUN_COLUMNS if c in out]]
 
 
-# Notebook 05 closes the day: its result card shows every design, on the 8 test claims and the 8 held-out claims.
-CARD_ROWS = {5: 6}
+FINAL_COLUMNS = ["label", "runs", "correct, 8 test", "correct, 8 held-out", "accuracy, all 16", "unsafe per run, all 16",
+                 "llm_calls_per_pkg", "cost_usd_per_pkg"]
+
+
+def _both_splits(label, test, held, runs=None):
+    """One row of the final comparison: a design on the 8 test claims, on the 8 held-out claims, and on all 16. Each
+    split counts for 8 claims, so the all-16 values are the means of the two splits (sums for unsafe approvals); a
+    missing split leaves the all-16 values empty. test and held are run rows (ours or yours) or None."""
+    have = [r for r in (test, held) if r is not None]
+    both = len(have) == 2
+    def correct(r):
+        return "not run" if r is None else str(r["correct"]) if "correct" in r and isinstance(r["correct"], str) \
+            else str(round(r["accuracy"] * r["n"]))
+    return {"label": label, "runs": runs if runs is not None else " + ".join(str(r.get("runs", 1)) for r in have),
+            "correct, 8 test": correct(test), "correct, 8 held-out": correct(held),
+            "accuracy, all 16": round((test["accuracy"] + held["accuracy"]) / 2, 3) if both else None,
+            "unsafe per run, all 16": round(test["unsafe_approvals"] + held["unsafe_approvals"], 1) if both else None,
+            "llm_calls_per_pkg": round(sum(r["llm_calls_per_pkg"] for r in have) / len(have), 2),
+            "cost_usd_per_pkg": round(sum(r["cost_usd_per_pkg"] for r in have) / len(have), 5),
+            # for the chart: all 16 claims, or the one split that ran
+            "_accuracy": sum(r["accuracy"] for r in have) / len(have), "_unsafe": sum(r["unsafe_approvals"] for r in have),
+            "_split": "" if both else ", 8 test only" if test is not None else ", 8 held-out only"}
+
+
+def final_comparison():
+    """Our runs of the three final designs on the 8 test claims, the 8 held-out claims and all 16 (notebook 05)."""
+    import pandas as pd
+    held = {r["label"].removesuffix(HELDOUT): r for r in HELDOUT_RUNS}
+    return pd.DataFrame([_both_splits(r["label"], r, held[r["label"]]) for r in (_CHECKLIST, _PIPELINE, _TEAM)])
+
+
+def _my_final_rows(mine):
+    """Your scoreboard runs of this session, one row per design: the latest run on the 8 test claims and the latest on
+    the 8 held-out claims (a label ending in ", 8 held-out")."""
+    test, held, order = {}, {}, []
+    for _, r in mine.iterrows():
+        design = r.get("design", r["label"])
+        base = design.removesuffix(HELDOUT)
+        if design.endswith(HELDOUT):
+            held[base] = r
+        elif r["n"] == 8:
+            test[base] = r
+        else:
+            continue
+        if base not in order:
+            order.append(base)
+    rows = []
+    for base in order:
+        t, h = test.get(base), held.get(base)
+        row = _both_splits(base, t, h)
+        row["replayed"] = all(bool(x.get("replayed", False)) for x in (t, h) if x is not None)
+        rows.append(row)
+    return rows
+
+
+def _final_card(mine) -> None:
+    """Notebook 05's result card: every final design on the 8 test claims, the 8 held-out claims and all 16."""
+    import pandas as pd
+
+    from .style import plot_history
+    ours = final_comparison()
+    mine_rows = _my_final_rows(mine) if len(mine) else []
+    if _interactive():
+        def points(df):   # the chart's point per design: all 16 claims, or the one split that ran
+            return df.assign(accuracy=df["_accuracy"], unsafe_approvals=df["_unsafe"],
+                             label=[f"{l}{s or ', all 16'}" for l, s in zip(df["label"], df["_split"])])
+        ref = points(ours).assign(runs=[7, 7, 7], unsafe=lambda d: d["unsafe_approvals"].map(lambda u: f"{u} per run"))
+        plot_history(points(pd.DataFrame(mine_rows)) if mine_rows else None, reference=ref)
+    if not mine_rows:
+        _markdown("No scoreboard run in this notebook, so the table shows only our runs.")
+    parts = []
+    if mine_rows:
+        df = pd.DataFrame(mine_rows)
+        parts.append(df[FINAL_COLUMNS].assign(source=["demo (replayed)" if r else "you, today" for r in df["replayed"]]))
+    parts.append(ours[FINAL_COLUMNS].assign(source="our runs"))
+    table = pd.concat(parts, ignore_index=True)
+    try:
+        from IPython.display import display
+        display(table)
+    except ImportError:
+        print(table.to_string())
+    _markdown("All 16: each split counts for 8 claims, so accuracy is the mean of the two splits and unsafe approvals "
+              "their sum, averaged over our runs. Correct and unsafe ranges cannot be added up, so the all-16 columns "
+              "show averages only.")
 
 
 def result_card(block: int) -> None:
@@ -274,8 +362,12 @@ def result_card(block: int) -> None:
     from .style import plot_history
     import pandas as pd
     mine = pd.DataFrame(HISTORY)
-    ref = reference_runs(block=CARD_ROWS.get(block, block))
-    if len(mine) or len(ref):
+    if block == 5:   # the day ends here: the final designs on the test claims, the held-out claims and all 16
+        _final_card(mine)
+        ref = []
+    else:
+        ref = reference_runs(block=block)
+    if block != 5 and (len(mine) or len(ref)):
         if _interactive() and (len(mine) or len(ref) >= 3):   # two of our points alone make an empty-looking chart
             plot_history(mine if len(mine) else None, reference=ref if len(ref) else None)
         if not len(mine):

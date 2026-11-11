@@ -84,12 +84,12 @@ def test_empty_picks_are_not_saved_and_saved_picks_print_a_paste_line(capsys):
     assert table.set_index("kind of claim").loc["Not covered", "your pick"] == ""
 
 
-def test_block_6_has_one_row_per_design_with_ranges():
-    rows = [r for r in course.REFERENCE_RUNS if r["block"] == 6 and "held-out" not in r["label"]]
-    assert [r["label"] for r in rows] == ["vague tools", "described tools", "checklist agent",
-                                          "checklist agent over MCP", "hybrid pipeline", "claims team"]
-    assert all(r["runs"] >= 3 and isinstance(r["correct"], str) for r in rows)
-    assert len([r for r in course.REFERENCE_RUNS if "held-out" in r["label"]]) == 3
+def test_held_out_runs_are_the_three_final_designs_and_voting_is_on_no_card():
+    assert [r["label"] for r in course.HELDOUT_RUNS] == ["checklist agent, 8 held-out", "hybrid pipeline, 8 held-out",
+                                                         "claims team, 8 held-out"]
+    assert all(r["runs"] >= 3 and isinstance(r["correct"], str) for r in course.HELDOUT_RUNS)
+    assert not any("voting" in r["label"] for r in course.REFERENCE_RUNS)   # a stretch task, after the card
+    assert [r["label"] for r in course.REFERENCE_RUNS if r["block"] == 4] == ["checklist agent", "hybrid pipeline"]
 
 
 def test_result_card_marks_a_replayed_run_as_a_demo(capsys, monkeypatch):
@@ -109,11 +109,30 @@ def test_a_pick_can_be_one_word_without_a_reason(capsys):
     assert df.loc["Routine and complete", "your pick"] == "workflow" and df.loc["Incomplete", "your pick"] == ""
 
 
-def test_notebook_05_result_card_shows_every_design_and_the_held_out_runs(capsys, monkeypatch):
+def test_notebook_05_result_card_shows_the_final_designs_on_test_held_out_and_all_16(capsys, monkeypatch):
     import sys
-    monkeypatch.setattr(sys.modules["claims_lab.scoreboard"], "HISTORY", [])
+    monkeypatch.setattr("claims_lab.course._interactive", lambda: False)
+    monkeypatch.setattr(sys.modules["claims_lab.scoreboard"], "HISTORY", [
+        dict(label="claims team", design="claims team", n=8, accuracy=0.875, unsafe_approvals=1, llm_calls_per_pkg=7.0,
+             cost_usd_per_pkg=0.008, replayed=False),
+        dict(label="claims team, 8 held-out", design="claims team, 8 held-out", n=8, accuracy=1.0, unsafe_approvals=0,
+             llm_calls_per_pkg=6.8, cost_usd_per_pkg=0.0076, replayed=True)])
     shown = []
     monkeypatch.setattr("IPython.display.display", lambda obj: shown.append(obj))
     cl.result_card(5)
-    table = shown[-1]
-    assert "vague tools" in set(table["label"]) and "claims team, 8 held-out" in set(table["label"])
+    table = shown[-1].set_index(["label", "source"])
+    assert list(table.index) == [("claims team", "you, today"), ("checklist agent", "our runs"),
+                                 ("hybrid pipeline", "our runs"), ("claims team", "our runs")]
+    mine = table.loc[("claims team", "you, today")]
+    assert (mine["correct, 8 test"], mine["correct, 8 held-out"]) == ("7", "8")
+    assert mine["accuracy, all 16"] == 0.938 and mine["unsafe per run, all 16"] == 1
+    ours = table.loc[("hybrid pipeline", "our runs")]
+    assert ours["runs"] == "4 + 3" and ours["correct, 8 held-out"] == "8 in every run"
+    assert ours["accuracy, all 16"] == 0.955 and ours["unsafe per run, all 16"] == 0.3
+    assert "All 16: each split counts for 8 claims" in capsys.readouterr().out
+
+
+def test_a_single_split_leaves_the_all_16_columns_empty():
+    row = course._both_splits("claims team", None, dict(n=8, accuracy=0.875, unsafe_approvals=0, llm_calls_per_pkg=7,
+                                                         cost_usd_per_pkg=0.008))
+    assert row["correct, 8 test"] == "not run" and row["accuracy, all 16"] is None and row["_split"] == ", 8 held-out only"

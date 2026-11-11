@@ -435,10 +435,7 @@ def versus_recorded(label: str = "claims team", split: str = "test"):
     from ..scoreboard import HISTORY
     from ..style import plot_history
     mine = pd.DataFrame([h for h in HISTORY if h.get("design", h["label"]) == label][-1:])
-    ref = reference_runs(block=5)
-    if split == "heldout":
-        ref = reference_runs(block=6)
-        ref = ref[ref["label"].str.contains("held-out")].reset_index(drop=True)
+    ref = reference_runs(split="heldout") if split == "heldout" else reference_runs(block=5)
     parts = ([as_runs(mine).assign(source="you, today")] if len(mine) else []) + [ref[RUN_COLUMNS].assign(source="our runs")]
     table = pd.concat(parts, ignore_index=True)
     if _interactive():
