@@ -1,6 +1,6 @@
-# The course's MCP servers in Claude Desktop
+# The course's MCP servers in Claude Desktop and other assistants
 
-Notebook 03 connects an agent to two MCP servers from the claims-lab package. The same servers also run in Claude Desktop on your own computer:
+Lab 2 and deep dive 03 connect an agent to two MCP servers from the claims-lab package. The same servers also run in Claude Desktop on your own computer:
 
 | Server | Module in `claims_lab` | What it offers |
 |---|---|---|
@@ -67,6 +67,20 @@ Only add the two servers above. `claude_desktop_config()` without names also add
 | The servers are not listed under Connectors | Claude Desktop was not restarted, or the file is no longer valid JSON | Quit with Cmd+Q and restart; check the file with `python3 -m json.tool` followed by its path |
 | A server is listed with an error | `command` does not point to the environment with claims-lab | Run `~/claims-lab-venv/bin/python -c "import claims_lab"`; on macOS, read the log in `~/Library/Logs/Claude/` (files starting with `mcp-server-lakeside-`) |
 | Settings do not let you change the configuration | A managed (company) installation can switch off local MCP servers | Use a personal installation, or try the servers in the MCP Inspector (below) |
+
+## Other assistants
+
+Every application that speaks MCP can use the same servers. Steps 1 (the Python environment) and the server modules stay the same; only the place where you register the command differs. Checked on 14 November 2026; menus change often, so check the vendor's help page if a step does not match.
+
+| Application | How to add the server | Local server |
+|---|---|---|
+| Claude Code | `claude mcp add lakeside-claims-systems -- ~/claims-lab-venv/bin/python -m claims_lab.mcp_servers.claims_systems` (see the [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp)) | yes |
+| VS Code (GitHub Copilot), Cursor | The same command and arguments in the editor's MCP configuration file, under `mcpServers` (see the [VS Code MCP configuration reference](https://code.visualstudio.com/docs/agents/reference/mcp-configuration) or Cursor's documentation) | yes |
+| ChatGPT | Settings, Apps, Advanced settings, Developer mode; then Create app with the address of a remote MCP server (see OpenAI's [developer mode guide](https://developers.openai.com/api/docs/guides/developer-mode)) | no |
+
+ChatGPT runs in OpenAI's cloud and cannot start a process on your computer. It connects only to a server on the internet, over HTTPS. Our servers would first have to run over Streamable HTTP behind a public address; that is hosting, the topic of Module 5. Which ChatGPT plans may use developer mode, and whether its tools may write, varies by plan.
+
+A server you connect runs with your rights and its descriptions reach the model word for word. Read the tool descriptions of any server before you connect it, as in Lab 2.
 
 ## Without Claude Desktop: the MCP Inspector
 

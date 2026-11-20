@@ -341,6 +341,11 @@ def _short(text: str, n: int = 150) -> str:
     return text if len(text) <= n else text[: n - 3] + "..."
 
 
+def _rule(title: str, line: str = "━") -> str:
+    """A heading line for the watch display, 60 characters wide so it fits a narrow notebook."""
+    return f"{line * 2} {title} ".ljust(60, line)
+
+
 def _definitions(tools) -> int:
     return _tokens(json.dumps([convert_to_openai_tool(t) for t in tools]))
 
@@ -362,29 +367,35 @@ def watch(team, pkg: Package, plot: bool = True) -> dict:
     rec = _Recorder()
     result = team.invoke({"messages": [("user", pkg.text())]}, config=run_config(12, callbacks=[rec]))
     asked = rec.runs
-    print(f"supervisor          reads {pkg.package_id} (about {_tokens(pkg.text()):,} tokens) and asks:")
+    print(_rule(f"supervisor reads {pkg.package_id}"))
+    print(f"  the claim package, about {_tokens(pkg.text()):,} tokens; the specialists never see it\n")
     for q in asked:
-        print(f"  to {(q['agent'] or 'specialist').replace('_', ' '):<17} {_short(q['question'], 140)}")
+        print(_rule(f"supervisor → {(q['agent'] or 'specialist').replace('_', ' ')}", "─"))
+        print(f"  question:  {_short(q['question'], 400)}")
         for m in q["messages"]:
             for tc in getattr(m, "tool_calls", None) or []:
                 args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
-                print(f"      calls {_short(tc['name'] + '(' + args + ')', 100)}")
-        print(f"    answers: {_short(q['messages'][-1].text, 220)}")
+                print(f"  calls      {_short(tc['name'] + '(' + args + ')', 200)}")
+        print(f"  answer:    {_short(q['messages'][-1].text, 500)}")
+        print("  ↩ the answer goes back to the supervisor\n")
     plain = _plain_tool_calls(result["messages"], rec.wrappers)
     for tc, text in plain:   # tools that are not a specialist agent, such as customer comms: the call and its whole result
         args = ", ".join(f"{k}={v!r}" for k, v in tc["args"].items())
-        print(f"  calls {_short(tc['name'] + '(' + args + ')', 160)}")
-        print("    returns:\n" + "\n".join("      " + line for line in text.strip().splitlines()))
+        print(_rule(f"supervisor → tool {tc['name']}", "─"))
+        print(f"  calls      {_short(tc['name'] + '(' + args + ')', 200)}")
+        print("  returns:\n" + "\n".join("    " + line for line in text.strip().splitlines()) + "\n")
     d = result.get("structured_response")
     if d is not None:
-        print(f"supervisor          decides {d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else "")
-              + f": {_short(d.reasoning, 200)}")
+        print(_rule("supervisor decides"))
+        print(f"  decision:  {d.decision}" + (f", pay CHF {d.payout_chf:,.2f}" if d.payout_chf else ""))
+        print(f"  reason:    {_short(d.reasoning, 500)}\n")
 
     runs = [("supervisor", result["messages"], SUPERVISOR_TOOL_DEFINITIONS, SUPERVISOR_PROMPT)]
     for q in asked:
         name = q["agent"] or "specialist"
         runs.append((name, q["messages"], [TOOLS[n] for n in TOOL_SPLIT.get(name, [])], PROMPTS.get(name, "")))
-    print("\nmodel calls and input tokens per agent (each specialist starts with an empty conversation):")
+    print(_rule("model calls and input tokens per agent"))
+    print("  each specialist starts with an empty conversation")
     total_calls = total_tokens = 0
     contexts = {}
     for name, messages, tools, prompt in runs:
@@ -594,10 +605,9 @@ def check_comms_tool(candidate, writer=None) -> BaseTool:
 INJECTION_ADDRESS = "claims-desk@reifen-express.example"
 
 
-@tool
+@tool(description="SEND an e-mail from Lakeside's claims department to any address: the customer, a garage, a repair "
+                  "shop or a surveyor. This contacts people outside Lakeside.")   # one line, so it prints as one line
 def send_email(package_id: str, to: list[str], subject: str, body: str) -> str:
-    """SEND an e-mail from Lakeside's claims department to any address: the customer, a garage, a repair shop or a
-    surveyor. This contacts people outside Lakeside."""
     from ..data import execute
     for r in to:
         execute("INSERT INTO outbox(package_id, recipient, subject, body) VALUES (?,?,?,?)", (package_id, r, subject, body))
@@ -693,9 +703,22 @@ def permissions_check(design, label: str, runs: int = 1, package_id: str = "PKG-
                          llm_calls=meter.calls + meter.replayed_calls,
                          cost_usd=round(meter.cost_usd + meter.replayed_cost_usd, 5), error=err))
     df = pd.DataFrame(rows)
-    if show:
-        print(df.to_string(index=False))
+    if show:   # the error column only when a run failed
+        _show_table(df.drop(columns="error") if df["error"].isna().all() else df)
     return df
+
+
+def _show_table(df) -> None:
+    """A table as HTML in a notebook, which fits the screen; as text elsewhere."""
+    try:
+        from IPython import get_ipython
+        from IPython.display import display
+        if get_ipython() is not None:
+            display(df.style.hide(axis="index").format(precision=4))
+            return
+    except ImportError:
+        pass
+    print(df.to_string(index=False))
 
 
 def show_leak() -> None:
@@ -704,12 +727,7 @@ def show_leak() -> None:
     import pandas as pd
 
     from ..course import LEAKED_EMAIL, PERMISSIONS_REFERENCE_RUNS
-    table = pd.DataFrame(PERMISSIONS_REFERENCE_RUNS)
-    try:
-        from IPython.display import display
-        display(table)
-    except ImportError:
-        print(table.to_string(index=False))
+    _show_table(pd.DataFrame(PERMISSIONS_REFERENCE_RUNS))
     print("\nThe instruction, at the end of the tyre shop's invoice (invoice.txt):\n")
     from ..data import load_package
     invoice = load_package("PKG-211").documents["invoice.txt"]

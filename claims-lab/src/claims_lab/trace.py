@@ -22,9 +22,13 @@ def _line(label: str, text: str) -> None:
                         break_long_words=True, break_on_hyphens=False))
 
 
-def indented(text: str, indent: int = 4) -> str:
-    """Text on its own indented lines, wrapped, so that a long reason stays readable under the line it belongs to."""
-    return textwrap.fill(" ".join(str(text).split()), WIDTH, initial_indent=" " * indent, subsequent_indent=" " * indent)
+def spot_block(pid: str, nickname: str, got: str, expected: str, why: str, extra: list[tuple[str, str]] = ()) -> str:
+    """One claim of a spot check: the verdict first, then the system's decision, the clerk's, and the reason."""
+    verdict = "RIGHT" if got == expected else "WRONG"
+    reason = " ".join(str(why).split())  # one line; the screen wraps it, so it fits any width
+    rows = [("decided", got), ("the clerk", expected), *extra, ("reason", reason)]
+    lines = [f"{pid} ({nickname}): {verdict}"] + [f"  {k + ':':<11} {v}" for k, v in rows]
+    return "\n".join(lines) + "\n"
 
 
 def show_trace(result, max_chars: int = 220, chart: bool = False) -> None:
@@ -136,7 +140,7 @@ def show_graph(app, highlight: list[str] | None = None, kinds: dict | None = Non
                titles: tuple[str, str] = ("Your graph", "Ours")) -> None:
     """Draw a compiled LangGraph graph. kinds marks nodes as model, code or person (by colour); highlight draws the path
     one claim took with a thick border. beside: a second graph drawn next to the first (for example the reference), with
-    titles. Without the drawing service (offline, automated runs), print the Mermaid text."""
+    titles. Without the drawing service (offline, automated runs, or no network), draw it locally."""
     import os
 
     from langchain_core.runnables.graph_mermaid import draw_mermaid_png
@@ -178,7 +182,9 @@ def show_graph(app, highlight: list[str] | None = None, kinds: dict | None = Non
             if legend:
                 print(legend.strip(" ;"))
             return
-    print(text)
+    _draw_locally(app, kinds, visited)   # offline or automated runs: no web service, so draw it here
+    if legend:
+        print(legend.strip(" ;"))
 
 
 def _mermaid(app, kinds, highlight) -> str:

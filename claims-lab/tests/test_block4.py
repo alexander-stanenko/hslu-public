@@ -56,8 +56,9 @@ def test_route_sends_judgement_to_the_agent():
 
 def test_pipeline_runs_and_a_person_confirms_payouts(offline, capsys):
     app = B.build_pipeline()
-    cl.show_graph(app)
-    assert "rule_checks" in capsys.readouterr().out  # offline: the Mermaid text
+    cl.show_graph(app, kinds=B.KINDS)
+    out = capsys.readouterr().out
+    assert "Blue: a model call" in out and "flowchart" not in out and "graph TD" not in out  # offline: drawn locally
     assert B.system(app)(cl.load_package("PKG-003")).decision == "decline"
     assert cl.scoreboard(app, ids=["PKG-002"], show=False)["predicted"].tolist() == ["refer_adjuster"]  # the graph itself
     for answer, expected in (("approve", "fast_track"), ("reject", "refer_adjuster")):
@@ -97,7 +98,10 @@ def test_watch_prints_each_step_and_its_kind(offline, capsys):
     state = B.watch(B.build_pipeline(), cl.load_package("PKG-002"))
     out = capsys.readouterr().out
     assert "extract_facts  (model) read: policy P-1002" in out and "Invoice GH-3318 was already used" in out and "rule_checks    (code)" in out
-    assert "class extract_facts,screen,claims_agent model" in out and " visited" in out  # offline: the Mermaid text
+    assert "thick border: the path of this claim" in out  # offline: drawn locally, with the path
+    from claims_lab.trace import _mermaid
+    text = _mermaid(B.build_pipeline(), B.KINDS, ["extract_facts", "rule_checks"])
+    assert "class extract_facts,screen,claims_agent model" in text and " visited" in text
     assert state["decision"].decision == "refer_adjuster"
 
 

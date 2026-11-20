@@ -37,7 +37,7 @@ def lookup_policy(policy_id: str) -> dict:
     the policy covers, the deductible in CHF and the dates between which the policy is valid."""
     rows = data.query("SELECT * FROM policies WHERE policy_id=?", (policy_id.strip().upper(),))
     if not rows:
-        return {"error": f"No policy with number {policy_id}. Use find_policies to search by name or plate."}
+        return {"error": f"No policy with number {policy_id}."}
     return _policy_row(rows[0])
 
 

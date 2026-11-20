@@ -34,9 +34,14 @@ def _usable_errlog_for_stdio() -> None:
 _usable_errlog_for_stdio()
 
 
-def _server_env() -> dict:
-    # stdio subprocesses only inherit a minimal environment; pass on what the servers need (embeddings, workdir)
-    keep = ("PATH", "HOME", "PYTHONPATH", "CLAIMS_LAB_", "AZURE_OPENAI_", "OPENAI_")
+# The servers that call a model themselves (policy_docs embeds the search query). Only these get the course key, so
+# a partner's server, such as garage_ratings, never sees it.
+NEEDS_MODEL_KEY = {"policy_docs"}
+
+
+def _server_env(model_key: bool = True) -> dict:
+    # stdio subprocesses only inherit a minimal environment; pass on what the server needs (workdir, and the key if any)
+    keep = ("PATH", "HOME", "PYTHONPATH", "CLAIMS_LAB_") + (("AZURE_OPENAI_", "OPENAI_") if model_key else ())
     env = {k: v for k, v in os.environ.items() if k.startswith(keep)}
     env.setdefault("FASTMCP_LOG_LEVEL", "WARNING")
     return env
@@ -45,7 +50,8 @@ def _server_env() -> dict:
 def stdio_connections(names: list[str] | None = None) -> dict:
     """Connection config for langchain_mcp_adapters.MultiServerMCPClient (each server runs as a subprocess)."""
     modules = {**SERVERS, **EXPERIMENTS}
-    return {n: {"transport": "stdio", "command": sys.executable, "args": ["-m", modules[n]], "env": _server_env()}
+    return {n: {"transport": "stdio", "command": sys.executable, "args": ["-m", modules[n]],
+                "env": _server_env(model_key=n in NEEDS_MODEL_KEY)}
             for n in (names or SERVERS)}
 
 

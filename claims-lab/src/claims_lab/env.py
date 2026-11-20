@@ -227,7 +227,8 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
             have = "missing"
         if have != want:
             print(f"  Note: {pkg} {have} (course tested with {want})")
-    print(f"  ok data: {len(list_packages('dev'))} dev + {len(list_packages('heldout'))} held-out claim packages, {len(labels())} labels")
+    print(f"  ok data: {len(list_packages('dev'))} claims to work on, {len(list_packages('heldout'))} held out for "
+          f"the final check, {len(labels())} clerk's decisions")
     if ping and ok:
         try:
             t0 = time.time()

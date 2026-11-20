@@ -190,3 +190,19 @@ def test_scoreboard_counts_tool_calls_and_model_time(capsys):
     assert df["tool_calls"].iloc[0] >= 1 and df["seconds"].iloc[0] is not None
     hist = cl.scoreboard_history(plot=False)
     assert "tool_calls_per_pkg" in hist and "wall_seconds" not in hist
+
+
+def test_short_history_columns():
+    cl.scoreboard(oracle_system, ids=["PKG-001"], show=False, label="short")
+    from claims_lab.scoreboard import SHORT_COLUMNS
+    cols = list(cl.scoreboard_history(plot=False, short=True).columns)
+    assert cols[:len(SHORT_COLUMNS)] == SHORT_COLUMNS and set(cols) <= {*SHORT_COLUMNS, "errors"}  # errors: earlier tests
+
+
+def test_only_the_servers_that_call_a_model_get_the_key(monkeypatch):
+    from claims_lab import mcp_servers
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-value")
+    conns = mcp_servers.stdio_connections(["claims_systems", "policy_docs", "garage_ratings"])
+    assert "AZURE_OPENAI_API_KEY" in conns["policy_docs"]["env"]
+    assert "AZURE_OPENAI_API_KEY" not in conns["garage_ratings"]["env"]
+    assert "AZURE_OPENAI_API_KEY" not in conns["claims_systems"]["env"]

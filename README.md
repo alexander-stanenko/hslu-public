@@ -6,7 +6,8 @@ The course notebooks install the helper package from here.
 | Folder | What it is |
 |---|---|
 | `claims-lab/` | The `claims_lab` Python package: synthetic data for the fictional insurer Lakeside Insurance AG, tools, MCP servers, scoreboard, reference solutions and the replay recording for the demo cells |
-| `claude-desktop/` | How to run the package's MCP servers in Claude Desktop on your computer (notebook 03, at home) |
+| `claude-desktop/` | How to run the package's MCP servers in Claude Desktop, Claude Code, VS Code or Cursor on your computer, and why ChatGPT needs a hosted server |
+| `READING.md` | Further reading from the lecture, with links |
 
 All data is invented for teaching. Any resemblance to real persons or businesses is coincidental.
 

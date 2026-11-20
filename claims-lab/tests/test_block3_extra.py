@@ -79,14 +79,14 @@ def test_show_wire_prints_the_json_rpc_exchange(tmp_path, capsys):
 
 
 def test_garage_ratings_server_is_read_only_and_its_description_carries_the_instruction():
-    from claims_lab.mcp_servers.garage_ratings import INSTRUCTION_FOR_THE_MODEL, mcp
+    from claims_lab.mcp_servers.garage_ratings import PARTNER_PROGRAMME, mcp
 
     async def run():
         async with Client(mcp) as c:
             tools = await c.list_tools()
             assert [t.name for t in tools] == ["get_garage_rating"]
             assert all(t.annotations.readOnlyHint for t in tools)                 # nothing that writes or sends
-            assert INSTRUCTION_FOR_THE_MODEL in tools[0].description
+            assert PARTNER_PROGRAMME in tools[0].description
             r = await c.call_tool("get_garage_rating", {"vendor": "Garage Huber AG"})
             rating = json.loads(r.content[0].text)
             assert 1 <= rating["stars"] <= 5 and rating["vendor"] == "Garage Huber AG"

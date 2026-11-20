@@ -133,7 +133,7 @@ def test_team_decides_offline_and_the_scoreboard_counts_every_agent(capsys):
     team = B.build_team()
     result = B.watch(team, cl.load_package("PKG-002"))
     out = capsys.readouterr().out
-    assert "coverage analyst" in out and "red flag checker" in out and "calls search_claims_by_invoice" in out
+    assert "coverage analyst" in out and "red flag checker" in out and "calls      search_claims_by_invoice" in out
     assert result["structured_response"].decision == "refer_adjuster"
     df = cl.scoreboard(team, ids=["PKG-002", "PKG-001"], label="claims team", show=False)   # the team as it is
     assert (df["llm_calls"] >= 6).all()  # the supervisor's calls and both specialists' calls

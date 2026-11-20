@@ -19,7 +19,7 @@ from langchain_core.runnables import RunnableLambda
 from .costs import RUN_MAX_CALLS, RUN_METERS, CostMeter
 from .data import Package, labels, load_package
 from .schemas import ClaimDecision
-from .trace import indented
+from .trace import spot_block
 
 HISTORY: list[dict] = []
 RUNS: dict[str, pd.DataFrame] = {}  # the latest per-claim table of each design (by label), for the claims grid
@@ -292,7 +292,7 @@ def spot_check(system, *package_ids: str) -> None:
             got, why = "ERROR", f"{type(e).__name__}: {e}"
         lab = next(l for l in labels() if l["package_id"] == pid)
         expected = lab["expected"]["decision"]
-        print(f"{'yes' if got == expected else 'no '} {pid} ({lab['nickname']}): {got} (expected {expected})\n{indented(why)}\n")
+        print(spot_block(pid, lab["nickname"], got, expected, why))
 
 
 async def aspot_check(system, *package_ids: str) -> None:
@@ -306,7 +306,7 @@ async def aspot_check(system, *package_ids: str) -> None:
             got, why = "ERROR", f"{type(e).__name__}: {e}"
         lab = next(l for l in labels() if l["package_id"] == pid)
         expected = lab["expected"]["decision"]
-        print(f"{'yes' if got == expected else 'no '} {pid} ({lab['nickname']}): {got} (expected {expected})\n{indented(why)}\n")
+        print(spot_block(pid, lab["nickname"], got, expected, why))
 
 
 def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B")) -> pd.DataFrame:
@@ -322,9 +322,12 @@ def compare(a: pd.DataFrame, b: pd.DataFrame, names: tuple[str, str] = ("A", "B"
     return m
 
 
-def scoreboard_history(plot: bool = True, grid: bool = True) -> pd.DataFrame:
+SHORT_COLUMNS = ["label", "accuracy", "unsafe_approvals", "llm_calls_per_pkg", "cost_usd_per_pkg"]
+
+
+def scoreboard_history(plot: bool = True, grid: bool = True, short: bool = False) -> pd.DataFrame:
     """All scoreboard runs of this session: a chart of accuracy against cost, and a grid of which design decided which
-    claim correctly."""
+    claim correctly. short=True keeps only the columns of SHORT_COLUMNS (the labs)."""
     df = pd.DataFrame(HISTORY)
     if plot and len(df):
         from .style import plot_claims_grid, plot_history
@@ -333,6 +336,8 @@ def scoreboard_history(plot: bool = True, grid: bool = True) -> pd.DataFrame:
             plot_claims_grid(RUNS)
     cols = ["label", "accuracy", "unsafe_approvals", "payout_accuracy", "issue_recall", "to_person", "llm_calls_per_pkg",
             "tool_calls_per_pkg", "cost_usd_per_pkg", "seconds_per_pkg"]
+    if short:
+        cols = list(SHORT_COLUMNS)
     if len(df) and df["errors"].any():
         cols.append("errors")
     return df[[c for c in cols if c in df]] if len(df) else df

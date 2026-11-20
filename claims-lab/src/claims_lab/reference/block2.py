@@ -20,7 +20,7 @@ from ..models import get_model, run_config
 from ..schemas import ClaimDecision
 from . import block1
 from . import blank_line_after
-from ..trace import indented
+from ..trace import spot_block
 
 
 def run(agent, max_steps: int = 12):
@@ -82,7 +82,10 @@ def lookup_policy(policy_id: str) -> str:
     """Look up a policy by its number (format 'P-1001'). Returns the holder, the car and its plate, the kinds of
     damage the policy covers ('covers'), the deductible in CHF and the dates between which the policy is valid.
     Use it first for every claim."""
-    return json.dumps(tools.lookup_policy(policy_id))
+    policy = tools.lookup_policy(policy_id)
+    if "error" in policy:   # the hint for the agents with find_policies (FINAL_TOOLS)
+        policy["error"] += " Use find_policies to search by name or plate."
+    return json.dumps(policy)
 
 
 @tool
@@ -275,9 +278,9 @@ def spot_check_steps(agent, *package_ids: str, max_steps: int = 12) -> dict:
                 pin, pout = price_for((m.response_metadata or {}).get("model_name"), m.usage_metadata.get("input_tokens", 0))
                 usd += m.usage_metadata.get("input_tokens", 0) * pin / 1e6 + m.usage_metadata.get("output_tokens", 0) * pout / 1e6
         used = [tc["name"] for m in ais for tc in m.tool_calls if not tc["name"][:1].isupper()]  # not the ClaimDecision tool
-        print(f"{'yes' if got == expected else 'no '} {pid}: {got:<15} (expected {expected:<15}) {len(ais)} model calls, "
-              f"{out / max(1, len(ais)):.0f} output tokens per call, ${usd:.4f}"
-              + ("" if meter.seconds_unknown else f", {meter.model_seconds:.1f} s"))
-        print(f"     tools: {', '.join(used) or 'none'}\n     reason:\n{indented(why, 7)}\n")
+        work = (f"{len(ais)} model calls, {out / max(1, len(ais)):.0f} output tokens per call, ${usd:.4f}"
+                + ("" if meter.seconds_unknown else f", {meter.model_seconds:.1f} s"))
+        print(spot_block(pid, label(pid)["nickname"], got, expected, why,
+                         extra=[("tools", ", ".join(used) or "none"), ("work", work)]))
         results[pid] = result
     return results

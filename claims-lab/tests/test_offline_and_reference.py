@@ -141,7 +141,7 @@ def test_run_helper_keeps_the_scoreboard_guard():
 def test_spot_check_and_context_breakdown(capsys):
     cl.spot_check(block2.final_agent(), "PKG-001", "PKG-002")   # an agent is accepted directly (scoreboard.as_system)
     out = capsys.readouterr().out
-    assert "PKG-001 (the routine windscreen)" in out and "PKG-002 (the reused invoice)" in out and "expected" in out
+    assert "PKG-001 (the routine windscreen)" in out and "PKG-002 (the reused invoice)" in out and "the clerk:" in out
     result = block2.run(block2.final_agent())(cl.load_package("PKG-001"))
     parts = cl.context_breakdown(result, tools=block2.FINAL_TOOLS, system_prompt=block2.PLAN_PROMPT)
     assert parts["tool definitions"] > 0 and parts["system prompt"] > 0 and parts["tool results"] > 0

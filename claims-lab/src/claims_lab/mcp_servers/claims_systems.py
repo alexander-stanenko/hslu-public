@@ -18,7 +18,10 @@ mcp = FastMCP("lakeside-claims-systems", instructions="Policies and earlier clai
 
 @mcp.tool(annotations=READ_ONLY, description=B.lookup_policy.description)
 def lookup_policy(policy_id: str) -> str:
-    return json.dumps(T.lookup_policy(policy_id), ensure_ascii=False)
+    policy = T.lookup_policy(policy_id)
+    if "error" in policy:   # this server also offers find_policies
+        policy["error"] += " Use find_policies to search by name or plate."
+    return json.dumps(policy, ensure_ascii=False)
 
 
 @mcp.tool(annotations=READ_ONLY, description=B.find_policies.description)

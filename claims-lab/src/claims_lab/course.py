@@ -83,6 +83,10 @@ def _design(label, n, runs, correct, unsafe, accuracy, unsafe_approvals, calls, 
             "unsafe_approvals": unsafe_approvals, "llm_calls_per_pkg": calls, "cost_usd_per_pkg": cost}
 
 
+# Lab 1's chatbot and workflow (notebooks/src/lab1_from_chatbot_to_agent.py, Parts 2 and 3, the workflow with the
+# reused-invoice check), five live runs each on 15 November 2026. The workflow paid PKG-007 in every run.
+_CHATBOT = _design("chatbot", 8, 5, "3 to 4", "0 to 2", 0.42, 1.6, 1.0, 0.0008)
+_WORKFLOW = _design("workflow", 8, 5, "7 in every run", "1 in every run", 0.88, 1.0, 1.0, 0.0006)
 _BAD = _design("vague tools", 8, 7, "3 to 5", "2 to 4", 0.52, 3.0, 2.8, 0.0025)
 _FIXED = _design("described tools", 8, 8, "4 to 5", "1 to 3", 0.59, 1.4, 3.3, 0.0036)
 _CHECKLIST = _design("checklist agent", 8, 24, "6 to 8", "0 to 2", 0.84, 1.3, 3.2, 0.0041)
@@ -95,6 +99,7 @@ REFERENCE_RUNS = [
     {"block": 4, **_CHECKLIST}, {"block": 4, **_PIPELINE},
     {"block": 5, **_CHECKLIST}, {"block": 5, **_PIPELINE}, {"block": 5, **_TEAM},
 ]
+LAB1_RUNS = [_CHATBOT, _WORKFLOW, _BAD, _FIXED, _CHECKLIST]   # the table at the end of Lab 1
 # The pipeline with voting (notebook 04, Stretch 1) got 7 to 8 of 8 in three runs, none unsafe, 3.8 calls and $0.0026
 # per claim. It is on no result card, since the card comes before the stretch.
 
@@ -250,10 +255,12 @@ def where_we_are(block: int) -> None:
 
 def reference_runs(up_to_block: int | None = None, block: int | None = None, split: str = "test"):
     """Our scoreboard runs (gpt-5.4-mini) as a table, one row per design: ranges over the runs and averages.
-    split="heldout": the three final designs on the 8 held-out claims."""
+    split="heldout": the three final designs on the 8 held-out claims. split="lab1": the five systems of Lab 1."""
     import pandas as pd
     if split == "heldout":
         return pd.DataFrame(HELDOUT_RUNS)
+    if split == "lab1":
+        return pd.DataFrame(LAB1_RUNS)
     rows = [r for r in REFERENCE_RUNS if (block is None or r["block"] == block)
             and (up_to_block is None or r["block"] <= up_to_block)]
     return pd.DataFrame(rows)
@@ -452,10 +459,13 @@ def picks_table(block: int, show: bool = False):
 
 FIGURES = {"the_day": "The day: six blocks, one growing system (slide 4)",
            "three_systems": "A spectrum of autonomy (slide 15)",
+           "chatbot": "Option 1: a chatbot (slide 15)",
+           "workflow": "Option 2: a workflow (slide 16)",
            "agent_loop": "The agent loop (slide 21)",
            "mcp_architecture": "MCP: host, client and server (slide 51)",
            "hybrid_pipeline": "The pipeline as a graph (slide 72)",
-           "claims_team": "Lakeside's claims team (slide 86)"}
+           "claims_team": "Lakeside's claims team (slide 86)",
+           "two_mail_designs": "Who may send e-mails? Two designs (Lab 2, Part 5)"}
 
 
 def figure(name: str, width: int = 900) -> None:
