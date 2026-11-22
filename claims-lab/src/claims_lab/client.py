@@ -4,7 +4,10 @@
     response = client.chat.completions.create(model="gpt-5.4-mini", messages=[...], tools=[...])
     response = client.chat.completions.parse(model="gpt-5.4-mini", messages=[...], response_format=cl.ClaimDecision)
 
-Requests and answers are the openai package's own (`AzureOpenAI`). Around each call the course adds what
+Requests and answers are the openai package's own (`AzureOpenAI`, or `OpenAI` pointed at Google's OpenAI-compatible
+endpoint when the course runs on a Google key; then `model=` is the Gemini model, `cl.model_name()`). Gemini puts
+JSON answers inside a Markdown code fence (```json ... ```); for Google the client removes the fence, so `json.loads`
+reads the answer as it does gpt-5.4-mini's. Around each call the course adds what
 `get_model()` adds to a LangChain model from notebook 02 on:
 
 - the session cost meter and spending cap (`cl.cost_report()`), and the meter of a scoreboard run;
@@ -71,6 +74,17 @@ def _rebuild(kind: str, kwargs: dict, data: dict):
     return ChatCompletion.model_validate(data)
 
 
+def _unfence(response) -> None:
+    """Gemini answers "```json\n{...}\n```" where gpt-5.4-mini answers "{...}": keep only what is inside the fence."""
+    import re
+    for choice in response.choices or []:
+        text = choice.message.content
+        if text:
+            m = re.fullmatch(r"\s*```[a-zA-Z]*\s*\n(.*?)\n?```\s*", text, flags=re.S)
+            if m:
+                choice.message.content = m.group(1)
+
+
 class _Completions:
     def __init__(self, owner: "CourseClient"):
         self._owner = owner
@@ -89,6 +103,9 @@ class _Completions:
 
         from .cache import SQLiteReplayCache
         kwargs.setdefault("max_completion_tokens", int(os.environ.get("CLAIMS_LAB_MAX_OUTPUT_TOKENS", 4000)))
+        if self._owner.provider == "google":
+            from .models import google_reasoning_effort
+            kwargs.setdefault("reasoning_effort", google_reasoning_effort())
         request = _request(kind, kwargs)
         cache = get_llm_cache()
         cache = cache if isinstance(cache, SQLiteReplayCache) else None
@@ -107,6 +124,8 @@ class _Completions:
             seconds = round(time.monotonic() - started, 2)
             if cache:
                 cache.update_raw(key, llm, {**response.model_dump(mode="json", warnings=False), SECONDS_KEY: seconds})
+        if self._owner.provider == "google":
+            _unfence(response)
         u = response.usage
         info = (response.model, u.prompt_tokens if u else 0, u.completion_tokens if u else 0, replayed)
         SESSION_METER._record(*info)
@@ -135,9 +154,15 @@ class CourseClient:
             from openai import AzureOpenAI
             self._client = AzureOpenAI(api_version=os.environ.get("OPENAI_API_VERSION", COURSE_AZURE["OPENAI_API_VERSION"]),
                                        max_retries=6)   # wait and retry after a rate limit
+        elif self.provider == "google":
+            from openai import OpenAI
+
+            from .models import GOOGLE
+            # more retries than for Azure: the free tier's per-minute limit needs a longer wait
+            self._client = OpenAI(base_url=GOOGLE["base_url"], api_key=os.environ.get("GOOGLE_API_KEY"), max_retries=10)
         elif self.provider != "offline":
-            raise RuntimeError("Notebook 01 uses OpenAI's client, which needs the course's Azure OpenAI key. "
-                               "Run the first cell of the notebook, or ask the instructor.")
+            raise RuntimeError("OpenAI's client needs an Azure OpenAI or a Google AI Studio key: paste one into the "
+                               "first cell of the notebook and run it again.")
 
     def _send(self, kind: str, kwargs: dict):
         if self._client is None:

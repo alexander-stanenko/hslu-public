@@ -41,7 +41,7 @@ NEEDS_MODEL_KEY = {"policy_docs"}
 
 def _server_env(model_key: bool = True) -> dict:
     # stdio subprocesses only inherit a minimal environment; pass on what the server needs (workdir, and the key if any)
-    keep = ("PATH", "HOME", "PYTHONPATH", "CLAIMS_LAB_") + (("AZURE_OPENAI_", "OPENAI_") if model_key else ())
+    keep = ("PATH", "HOME", "PYTHONPATH", "CLAIMS_LAB_") + (("AZURE_OPENAI_", "OPENAI_", "GOOGLE_API_KEY") if model_key else ())
     env = {k: v for k, v in os.environ.items() if k.startswith(keep)}
     env.setdefault("FASTMCP_LOG_LEVEL", "WARNING")
     return env

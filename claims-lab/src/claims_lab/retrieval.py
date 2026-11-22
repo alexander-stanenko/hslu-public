@@ -1,7 +1,7 @@
 """Search over Lakeside's general terms for car insurance (RAG as a tool).
 
 Chunks are the numbered sections (§) of the terms. With provider embeddings configured
-(Azure) we use them; otherwise a local TF-IDF stand-in is used, so it also works offline.
+(Azure or Google) we use them; otherwise a local TF-IDF stand-in is used, so it also works offline.
 """
 from __future__ import annotations
 
@@ -33,10 +33,12 @@ def chunks() -> list[dict]:
 
 def _embedding_call(texts: list[str]) -> None:
     """Embedding calls go through the shared spending ledger too (estimated tokens, tiny cost)."""
-    from .costs import EMBEDDING_PRICE, ledger_add, ledger_check
+    from .costs import EMBEDDING_PRICE, GOOGLE_EMBEDDING_PRICE, ledger_add, ledger_check
+    from .models import provider
     ledger_check()
     tokens = sum(len(t) for t in texts) // 4
-    ledger_add("embedding", "text-embedding", tokens, 0, tokens * EMBEDDING_PRICE / 1e6)
+    price = GOOGLE_EMBEDDING_PRICE if provider() == "google" else EMBEDDING_PRICE
+    ledger_add("embedding", "text-embedding", tokens, 0, tokens * price / 1e6)
 
 
 def _cached_vectors(docs: list[str], emb) -> np.ndarray:

@@ -1,4 +1,4 @@
-"""Pre-flight check run at the top of every notebook: key, provider, package versions, data, model ping."""
+"""Pre-flight check run at the top of every notebook: key, provider (Azure OpenAI or Google), versions, data, model ping."""
 from __future__ import annotations
 
 import logging
@@ -8,7 +8,8 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 PINNED = {"langchain": "1.4.7", "langgraph": "1.2.17", "fastmcp": "3.4.11", "mcp": "1.30.0", "langchain-mcp-adapters": "0.3.2"}
-KEY_NAMES = {"anthropic": "ANTHROPIC_API_KEY", "azure_openai": "AZURE_OPENAI_API_KEY", "offline": None}
+KEY_NAMES = {"anthropic": "ANTHROPIC_API_KEY", "azure_openai": "AZURE_OPENAI_API_KEY", "google": "GOOGLE_API_KEY",
+             "offline": None}
 
 
 def _in_colab() -> bool:
@@ -103,22 +104,25 @@ class _RetryNotice(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         import time
-        if "Retrying request" not in record.getMessage() or time.time() - self._last < 20:
+        if "Retrying" not in record.getMessage() or time.time() - self._last < 20:   # OpenAI's and Google's clients
             return
         self._last = time.time()
-        print("  Waiting. The provider asked us to wait (the shared rate limit, or a busy server). The request is retried "
+        print("  Waiting. The provider asked us to wait (the rate limit of your key, or a busy server). The request is retried "
               "automatically: let the cell run.", flush=True)
 
 
 def _quiet() -> None:
     for name in ("httpx", "mcp", "fastmcp", "FastMCP", "anthropic", "openai", "langchain_mcp_adapters"):
         logging.getLogger(name).setLevel(logging.WARNING)
-    for name in ("openai._base_client", "anthropic._base_client"):  # only their retry notices, printed by _RetryNotice
+    # only their retry notices, printed by _RetryNotice
+    for name in ("openai._base_client", "anthropic._base_client", "google_genai._api_client"):
         client_log = logging.getLogger(name)
         client_log.setLevel(logging.INFO)
         client_log.propagate = False
         if not any(isinstance(h, _RetryNotice) for h in client_log.handlers):
             client_log.addHandler(_RetryNotice())
+    # Google's library warns about "non-text parts" on every answer that calls a tool; the tool calls are read anyway
+    logging.getLogger("google_genai").setLevel(logging.ERROR)
     os.environ.setdefault("FASTMCP_SHOW_CLI_BANNER", "false")
 
 
@@ -188,8 +192,9 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
     """Prepare the notebook: API key, provider, versions, data, a test call to the model.
 
     Args:
-        provider: 'azure_openai' (the course provider, the default), 'offline' or 'anthropic' (default: from
-            CLAIMS_LAB_PROVIDER, else 'azure_openai'; an Anthropic key in the environment does not change it).
+        provider: 'azure_openai' (the course provider, the default), 'google', 'offline' or 'anthropic' (default:
+            from CLAIMS_LAB_PROVIDER; else 'google' if a Google key is found and no Azure key, else 'azure_openai';
+            an Anthropic key in the environment does not change it).
             'offline' uses a scripted stand-in model: no key, no network, no cost (for testing the notebooks).
         ping: send one tiny request to check that the model answers.
         **azure: optional Azure settings, e.g. endpoint=..., chat_deployment=..., embedding_deployment=..., api_version=...
@@ -205,6 +210,8 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
                     "embedding_deployment": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "api_version": "OPENAI_API_VERSION"}[k]] = v
     if provider:
         os.environ["CLAIMS_LAB_PROVIDER"] = provider
+    elif not os.environ.get("CLAIMS_LAB_PROVIDER") and not _secret("AZURE_OPENAI_API_KEY") and _secret("GOOGLE_API_KEY"):
+        os.environ["CLAIMS_LAB_PROVIDER"] = "google"   # only a Google AI Studio key: Gemini
     from . import models
     from .data import labels, list_packages
 
@@ -216,10 +223,13 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
         print("  ok provider offline: scripted stand-in model, no API calls, answers are NOT from a real LLM")
     else:
         src = _load_key(KEY_NAMES[p])
-        print(f"  {'ok' if src else 'MISSING'} provider {p}, API key from {src or 'NOWHERE: add it to Colab Secrets'}")
+        print(f"  {'ok' if src else 'MISSING'} provider {p}, API key from "
+              f"{src or 'NOWHERE: paste it into the first cell, or add it to Colab Secrets'}")
     ok &= bool(src)
     if p == "azure_openai":
         ok &= _azure_settings(models.COURSE_AZURE)
+    elif p == "google":
+        print(f"  ok Google model {models.google_model()} (Google AI Studio)")
     for pkg, want in PINNED.items():
         try:
             have = version(pkg)
@@ -239,12 +249,12 @@ def setup(provider: str | None = None, ping: bool = True, **azure) -> None:
         except Exception as e:
             ok = False
             msg = str(e)
-            if "credit balance" in msg.lower() or "quota" in msg.lower():
+            if "429" in msg or "resource_exhausted" in msg.lower():
+                hint = "rate limit: wait 30 s and re-run (on Google's free tier, also check the daily limit)"
+            elif "credit balance" in msg.lower() or "quota" in msg.lower():
                 hint = "the API account has no credit/quota left: tell the instructor"
-            elif "401" in msg or "auth" in msg.lower():
+            elif "401" in msg or "auth" in msg.lower() or "api key not valid" in msg.lower():
                 hint = "check the API key"
-            elif "429" in msg:
-                hint = "rate limit: wait 30 s and re-run"
             else:
                 hint = "see the error"
             print(f"  FAILED model call ({type(e).__name__}): {hint}\n    {msg[:200]}")

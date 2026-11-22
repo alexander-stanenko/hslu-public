@@ -17,5 +17,5 @@ import claims_lab as cl
 cl.setup()
 ```
 
-The package needs an API key for the course model (Azure OpenAI or Anthropic), read from Colab Secrets or the environment.
+The package needs an API key for the course model (Azure OpenAI, a Google AI Studio key for Gemini, or Anthropic), read from Colab Secrets or the environment.
 `CLAIMS_LAB_PROVIDER=offline` runs it with a scripted stand-in model, without a key and at no cost.

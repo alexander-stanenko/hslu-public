@@ -1,7 +1,8 @@
 """One place that decides which LLM provider and model the notebooks use.
 
-Notebooks only call `get_model()` and `get_embeddings()`. The course runs on Azure OpenAI (gpt-5.4-mini);
-'offline' is a scripted stand-in for tests. Anthropic is used only when CLAIMS_LAB_PROVIDER=anthropic is set.
+Notebooks only call `get_model()` and `get_embeddings()`. The course runs on Azure OpenAI (gpt-5.4-mini) or, with a
+Google AI Studio key, on Gemini ('google'). 'offline' is a scripted
+stand-in for tests. Anthropic is used only when CLAIMS_LAB_PROVIDER=anthropic is set.
 """
 from __future__ import annotations
 
@@ -20,12 +21,43 @@ COURSE_AZURE = {"AZURE_OPENAI_CHAT_DEPLOYMENT": "gpt-5.4-mini",
                 "AZURE_OPENAI_EMBEDDING_DEPLOYMENT": "text-embedding-3-small",
                 "OPENAI_API_VERSION": "2025-04-01-preview"}
 
+# Gemini with a Google AI Studio key. OpenAI's client (notebook 01, Lab 1) and the embeddings go through Google's
+# OpenAI-compatible endpoint; LangChain models use LangChain's Google integration (langchain-google-genai).
+# CLAIMS_LAB_GOOGLE_MODEL and CLAIMS_LAB_GOOGLE_EMBEDDING_MODEL override the models.
+GOOGLE = {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+          # gemini-3.8-flash answered "high demand" (503) on every try on 22 November 2026; flash-lite answered each time
+          "chat_model": "gemini-3.5-flash-lite",
+          "embedding_model": "gemini-embedding-001",
+          # Gemini 3 models always reason a little; "low" keeps calls quick and cheap, close to gpt-5.4-mini's default
+          "reasoning_effort": "low"}
+
 
 def provider() -> str:
-    """'azure_openai' (the course provider and the default), 'offline' or 'anthropic', from CLAIMS_LAB_PROVIDER.
+    """'azure_openai' (the course provider and the default), 'google', 'offline' or 'anthropic', from CLAIMS_LAB_PROVIDER.
 
-    No key is used to guess the provider: an Anthropic key in the environment never switches the course to Anthropic."""
+    No key is used to guess the provider here: an Anthropic key in the environment never switches the course to
+    Anthropic. `claims_lab.setup` switches to 'google' when only a Google key is found."""
     return os.environ.get("CLAIMS_LAB_PROVIDER") or "azure_openai"
+
+
+def google_model() -> str:
+    return os.environ.get("CLAIMS_LAB_GOOGLE_MODEL") or GOOGLE["chat_model"]
+
+
+def model_name() -> str:
+    """The name to pass as `model=` to OpenAI's client (`cl.get_client()`): the Azure deployment, or the Gemini model."""
+    p = provider()
+    if p == "google":
+        return google_model()
+    if p == "anthropic":
+        return os.environ.get("CLAIMS_LAB_MODEL", DEFAULT_ANTHROPIC_MODEL)
+    if p == "offline":
+        return "offline"
+    return os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT", COURSE_AZURE["AZURE_OPENAI_CHAT_DEPLOYMENT"])
+
+
+def google_reasoning_effort() -> str:
+    return os.environ.get("CLAIMS_LAB_REASONING_EFFORT") or GOOGLE["reasoning_effort"]
 
 
 def get_model(model: str | None = None, effort: str | None = None, **kwargs) -> BaseChatModel:
@@ -39,11 +71,19 @@ def get_model(model: str | None = None, effort: str | None = None, **kwargs) -> 
     """
     kwargs.setdefault("callbacks", [SESSION_METER])
     if effort:
-        kwargs["reasoning_effort" if provider() == "azure_openai" else "effort"] = effort
+        kwargs["reasoning_effort" if provider() in ("azure_openai", "google") else "effort"] = effort
     if provider() == "offline":
         from .offline import OfflineChatModel
         return OfflineChatModel(callbacks=kwargs["callbacks"])
     kwargs.setdefault("max_retries", 6)
+    if provider() == "google":
+        # LangChain's Google integration, not ChatOpenAI on the compatible endpoint: Gemini 3 wants each tool call's
+        # "thought signature" sent back in the next request, and only the Google integration keeps it
+        kwargs.setdefault("max_output_tokens", int(os.environ.get("CLAIMS_LAB_MAX_OUTPUT_TOKENS", 4000)))
+        kwargs.setdefault("reasoning_effort", google_reasoning_effort())
+        kwargs["max_retries"] = max(kwargs["max_retries"], 10)   # the free tier's per-minute limit needs a longer wait
+        return init_chat_model(f"google_genai:{model or google_model()}", google_api_key=os.environ.get("GOOGLE_API_KEY"),
+                               **kwargs)
     if provider() == "azure_openai":
         deployment = model or os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT", COURSE_AZURE["AZURE_OPENAI_CHAT_DEPLOYMENT"])
         # cap each answer (reasoning tokens count as output): a single call can't run away
@@ -56,7 +96,13 @@ def get_model(model: str | None = None, effort: str | None = None, **kwargs) -> 
 
 
 def get_embeddings():
-    """Provider embeddings if configured (Azure), else None (retrieval then uses a local TF-IDF stand-in)."""
+    """Provider embeddings if configured (Azure or Google), else None (retrieval then uses a local TF-IDF stand-in)."""
+    if provider() == "google":
+        from langchain_openai import OpenAIEmbeddings
+        # check_embedding_ctx_length=False: send the text itself, not OpenAI token ids, which Google does not accept
+        return OpenAIEmbeddings(model=os.environ.get("CLAIMS_LAB_GOOGLE_EMBEDDING_MODEL") or GOOGLE["embedding_model"],
+                                base_url=GOOGLE["base_url"], api_key=os.environ.get("GOOGLE_API_KEY"),
+                                check_embedding_ctx_length=False, max_retries=3)
     if provider() == "azure_openai":
         from langchain_openai import AzureOpenAIEmbeddings
         deployment = os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", COURSE_AZURE["AZURE_OPENAI_EMBEDDING_DEPLOYMENT"])

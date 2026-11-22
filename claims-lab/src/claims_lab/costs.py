@@ -33,9 +33,14 @@ PRICES = {
     "gpt-5.4-mini": (0.75, 4.50),
     "gpt-5.4-nano": (0.20, 1.25),
     "gpt-5-mini": (0.25, 2.00),
+    # Google AI Studio, paid tier, as listed on 22 November 2026 (the free tier costs nothing, with rate limits);
+    # gemini-3.8-flash goes to (1.50, 7.50) on 1 January 2027
+    "gemini-3.8-flash": (0.75, 3.75),
+    "gemini-3.5-flash-lite": (0.30, 2.50),
     "offline": (0.0, 0.0),  # the scripted stand-in model (claims_lab.offline)
 }
 EMBEDDING_PRICE = 0.02  # USD per 1M tokens (text-embedding-3-small)
+GOOGLE_EMBEDDING_PRICE = 0.15  # USD per 1M tokens (gemini-embedding-001, paid tier)
 LONG_CONTEXT = {"claude-haiku-5-5": (100_000, 0.50, 2.50)}  # above this many input tokens a higher rate applies
 CACHED_FLAG = "claims_lab_cached"
 SECONDS_KEY = "claims_lab_seconds"  # how long the call took when it was recorded (the replay cache stores it)
@@ -89,6 +94,7 @@ def ledger_add(kind: str, model: str | None, input_tokens: int, output_tokens: i
 
 def price_for(model_name: str | None, input_tokens: int = 0) -> tuple[float, float]:
     if model_name:
+        model_name = model_name.removeprefix("models/")   # Google may answer with "models/gemini-..."
         for key, p in PRICES.items():
             if model_name.startswith(key):
                 if key in LONG_CONTEXT and input_tokens > LONG_CONTEXT[key][0]:
